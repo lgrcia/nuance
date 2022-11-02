@@ -8,6 +8,7 @@ setup(
     name="nuance",
     version="0.0.1",
     author="Lionel J. Garcia",
+    packages=["nuance"],
     description="Transit detection in correlated noises",
     # packages=find_packages(exclude=["test"]),
     #include_package_data = True,
