@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  Linear transit search in stellar variability and correlated noises 
+  A Python package to detect exoplanetary transits in the presence of stellar variability and correlated noises
   <br>
   <p align="center">
     <a href="https://github.com/lgrcia/nuance">
