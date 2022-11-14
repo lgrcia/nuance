@@ -54,6 +54,8 @@ period = periods[i]
 t0, duration = nu.best_periodic_transit(p0)
 ```
 
+full examples in [docs/notebooks]("docs/notebooks/")
+
 ## Installation
 
 *nuance* is written for python 3 and can be installed **locally** by cloning this repository
