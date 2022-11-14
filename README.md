@@ -3,11 +3,11 @@
 # nuance
 
 <p align="center">
-    <img src="docs/nuance.svg" width="250">
+    <img src="docs/nuance.svg" width="300">
 </p>
 
 <p align="center">
-  A python package to build FITS images pipelines.
+  Transit search in correlated noises 
   <br>
   <p align="center">
     <a href="https://github.com/lgrcia/nuance">
