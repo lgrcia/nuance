@@ -25,7 +25,6 @@
 
 ```python
 from nuance import Nuance
-from nuance import Nuance
 from tinygp import kernels, GaussianProcess
 
 time, diff, diff_error = ...
