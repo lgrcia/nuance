@@ -54,7 +54,7 @@ period = periods[i]
 t0, duration = nu.best_periodic_transit(p0)
 ```
 
-full examples in [docs/notebooks]("docs/notebooks/")
+full examples in [docs/notebooks](docs/notebooks)
 
 ## Installation
 
