@@ -51,7 +51,7 @@ class Nuance:
 
         self.eval_m = eval_m
         
-    def linear_search(self, t0s, Ds, positive=True):
+    def linear_search(self, t0s, Ds, positive=True, progress=True):
         self.t0s = t0s
         self.Ds = Ds
         ll = np.zeros((len(t0s), len(Ds)))
@@ -60,7 +60,9 @@ class Nuance:
         depths = ll.copy()
         n = len(self.X)
 
-        for i, t0 in enumerate(tqdm(t0s)):
+        _progress = lambda x: tqdm(x) if progress else x
+
+        for i, t0 in enumerate(_progress(t0s)):
             for j, D in enumerate(Ds):
                 m = transit(self.x, t0, D, 1)
                 _ll, w, v = self.eval_m(m)
@@ -146,7 +148,7 @@ class Nuance:
             
         return fold
 
-    def periodic_search(self, periods):
+    def periodic_search(self, periods, progress=True):
 
         self.periods = periods
         
@@ -156,7 +158,9 @@ class Nuance:
         ll0 = float(ll0) # from DeviceArray
         fold = self._f_fold()
 
-        for i, p in enumerate(tqdm(periods)):
+        _progress = lambda x: tqdm(x) if progress else x
+
+        for i, p in enumerate(_progress(periods)):
             _, lc, lv = fold(p)
             llc[i] = np.max(lc, 0)
             llv[i] = np.max(lv - np.min(lv, 0), 0)
