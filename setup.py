@@ -6,7 +6,7 @@ README = (HERE / "README.md").read_text(encoding='utf-8')
 
 setup(
     name="nuance",
-    version="0.0.1",
+    version="0.0.2",
     author="Lionel J. Garcia",
     packages=["nuance"],
     description="Transit detection in correlated noises",

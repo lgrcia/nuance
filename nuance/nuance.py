@@ -2,9 +2,9 @@ import jax
 from tinygp import kernels, GaussianProcess
 import numpy as np
 import jax.numpy as jnp
-from .utils import transit, interp_split_times, periodic_transit
+from . import utils
 from tqdm.autonotebook import tqdm
-from scipy.interpolate import interp2d
+from .search_data import SearchData
 
 class Nuance:
     
@@ -50,10 +50,12 @@ class Nuance:
             return self.gp.log_probability(y - w@Xm), w, v
 
         self.eval_m = eval_m
+
+    @property
+    def ll0(self) -> float:
+        return self.eval_m(np.zeros_like(self.x))[0].__array__()
         
     def linear_search(self, t0s, Ds, positive=True, progress=True):
-        self.t0s = t0s
-        self.Ds = Ds
         ll = np.zeros((len(t0s), len(Ds)))
         depths = np.zeros((len(t0s), len(Ds)))
         vars = ll.copy()
@@ -64,7 +66,7 @@ class Nuance:
 
         for i, t0 in enumerate(_progress(t0s)):
             for j, D in enumerate(Ds):
-                m = transit(self.x, t0, D, 1)
+                m = utils.single_transit(self.x, t0, D, 1)
                 _ll, w, v = self.eval_m(m)
                 depths[i, j] = w[n]
                 vars[i, j] = v[n, n]
@@ -74,103 +76,48 @@ class Nuance:
             ll0 = self.eval_m(np.zeros_like(self.x))[0]
             ll[depths<0] = ll0
 
-        self.ll = ll
-        self.z = depths
-        self.vz = vars
+        return SearchData(t0s=t0s, Ds=Ds, ll=ll, z=depths, vz=vars, ll0=self.ll0)
 
-        return ll, depths, vars
-
-    def models_m(self, m):
-        _, w, v = self.eval_m(m)
-        mean = w[0:-1]@self.X
-        astro = m*w[-1]
-        _, cond = self.gp.condition(self.y-mean-astro)
-        noise = cond.mean
-
-        return mean, astro, noise
-    
-    def models(self, t0, D):
-        m = transit(self.x, t0, D, 1)
-        return self.models_m(m)
-
-    def solve(self, t0, D):
-        m = transit(self.x, t0, D, 1)
-        _, w, v = self.eval_m(m)
-        return w, v
-    
-    def depth(self, t0, D):
-        m = transit(self.x, t0, D, 1)
-        _, w, v = self.eval_m(m)
-        return w[-1], v[-1, -1]
-
-    def _f_fold(self):
-        t0s, Ds = self.t0s, self.Ds
-        f_ll = interp2d(Ds, t0s, self.ll)
-        f_z = interp2d(Ds, t0s, self.z)
-        f_dz2 = interp2d(Ds, t0s, self.vz)
-        ll0 = float(self.eval_m(np.zeros_like(self.x))[0]) # from DeviceArray
-
-        # TODO: Investigate why JAX is slowing everything down here
-        #@jax.jit
-        def log_gauss_product_integral(a, va, b, vb):
-            return -0.5 * np.square(a-b)/(va +vb) - 0.5*np.log(va+vb) - 0.5*np.log(np.pi) - np.log(2)/2
-
-        #@jax.jit
-        def A(z, vz):
-            vZ = 1/np.sum(1/vz, 0)
-            Z = vZ * np.sum(z/vz, 0)
-            return np.sum(log_gauss_product_integral(z, vz, np.expand_dims(Z, 0), np.expand_dims(vZ, 0)), 0)
-
-        #@jax.jit
-        def LL(ll, z, vz):
-            s1 = np.sum(ll, 0)
-            s2 = np.sum(A(z, vz), 0)
-            S = s1 + np.expand_dims(s2, 0)
-
-            return S
-
-        def interpolate_all(pt0s):
-            # computing the likelihood folds by interpolating in phase
-            folds_ll = np.array([f_ll(Ds, t) for t in pt0s])
-            folds_z = np.array([f_z(Ds, t) for t in pt0s])
-            folds_vz = np.array([f_dz2(Ds, t) for t in pt0s])
-
-            return folds_ll, folds_z, folds_vz
-        
-        def fold(p):
-            pt0s = interp_split_times(self.x, p)
-            n = len(pt0s)
-            folds_ll, folds_z, folds_vz = interpolate_all(pt0s)
-            lc = np.sum(folds_ll, 0) - n*ll0
-            lv = LL(folds_ll, folds_z, folds_vz)
-            
-            return pt0s[0]/p, lc, lv
-            
-        return fold
-
-    def periodic_search(self, periods, progress=True):
-
-        self.periods = periods
-        
+    def periodic_search(self, search_data : SearchData, periods, progress=True):
         ll0, _, _ = self.eval_m(np.zeros_like(self.x))
-        llv = np.zeros((len(periods), len(self.Ds)))
+        llv = np.zeros((len(periods), search_data.shape[1]))
         llc = llv.copy()
         ll0 = float(ll0) # from DeviceArray
-        fold = self._f_fold()
+        fold = search_data.fold
 
         _progress = lambda x: tqdm(x) if progress else x
 
         for i, p in enumerate(_progress(periods)):
             _, lc, lv = fold(p)
             llc[i] = np.max(lc, 0)
-            llv[i] = np.max(lv - np.min(lv, 0), 0)
+            llv[i] = np.max(lv - np.mean(lv, 0), 0)
+        
+        search_data.periods = periods
+        search_data.llc = llc
+        search_data.llv = llv
 
-        return llc, llv
+    def _models(self, m):
+        _, w, _ = self.eval_m(m)
+        mean = w[0:-1]@self.X
+        signal = m*w[-1]
+        _, cond = self.gp.condition(self.y-mean-signal)
+        noise = cond.mean
 
-    def best_periodic_transit(self, period):
-        fold = self._f_fold()
-        phase, lv, _ = fold(period)
-        i, j = np.unravel_index(np.argmax(lv), lv.shape)
-        t0 = phase[i]*period
-        D = self.Ds[j]
-        return t0, D
+        return mean, signal, noise
+    
+    def models(self, t0, D, P=None):
+        m = utils.transit(self.x, t0, D, 1, P=P)
+        return self._models(m)
+
+    def solve(self, t0, D, P=None):
+        m = utils.transit(self.x, t0, D, 1, P=P)
+        _, w, v = self.eval_m(m)
+        return w, v
+    
+    def depth(self, t0, D, P=None):
+        w, v = self.solve(t0, D, P)
+        return w[-1], np.sqrt(v[-1, -1])
+
+    def snr(self, t0, D, P=None):
+        w, dw = self.depth(t0, D, P=P)
+        return w/dw
