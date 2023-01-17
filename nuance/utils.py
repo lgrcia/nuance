@@ -2,6 +2,8 @@ import jax
 from jax import numpy as jnp
 import numpy as np
 
+
+
 def transit(t, t0=None, D=None, d=None, c=12, P=None):
     if P is None:
         return single_transit(t, t0=t0, D=D, d=d, c=c).__array__()
@@ -34,5 +36,15 @@ def interp_split_times(time, p):
 
     return pt0s
 
+def phase(t, t0, p):
+    return (t - t0 + 0.5 * p) % p - 0.5 * p
+    
 def tv_dv(duration, depth, omega, sigma):
     return np.pi/(omega*duration), 2*sigma/depth
+
+def binn(x, y, n):
+    N = int(len(x)/n)
+    ns = np.histogram(x, N)[0]
+    bx = np.histogram(x, N, weights=x)[0]/ns
+    by = np.histogram(x, N, weights=y)[0]/ns
+    return bx, by
