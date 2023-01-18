@@ -48,3 +48,33 @@ def binn(x, y, n):
     bx = np.histogram(x, N, weights=x)[0]/ns
     by = np.histogram(x, N, weights=y)[0]/ns
     return bx, by
+
+def log_gauss_product_integral(a, va, b, vb):
+    """Log of the product ot two Normal distributions (normalized)
+
+    Parameters
+    ----------
+    a : float
+        mean of distribution A
+    va : float
+        variance of distribution A
+    b : float
+        mean of distribution B
+    vb : float
+        variance of distribution B
+
+    Returns
+    -------
+    float
+        log of the integral of A*B
+    """
+    return -0.5 * np.square(a-b)/(va +vb) - 0.5*np.log(va+vb) - 0.5*np.log(np.pi) - np.log(2)/2
+
+
+def Ps(lls, zs, vzs):
+    vZ = 1/np.sum(1/vzs, 0)
+    Z = vZ * np.sum(zs/vzs, 0)
+
+    P1 = np.sum(lls, 0)
+    P2 = P1 + np.sum(log_gauss_product_integral(zs, vzs, Z, vZ), 0)
+    return P1, P2

@@ -101,21 +101,26 @@ class Nuance:
 
     def periodic_search(self, periods, progress=True):
         new_search_data = self.search_data.copy()
-        fold = new_search_data.fold
-        snr = np.zeros((len(periods), 4))
+        fold_ll = new_search_data.fold_ll
+        n = len(periods)
+        snr = np.zeros(n)
+        max_ll = snr.copy()
+        params = np.zeros((n, 3))
 
         _progress = lambda x: tqdm(x) if progress else x
 
-        for _i, p in enumerate(_progress(periods)):
-            phase, _, lv = fold(p)
-            lv = lv - np.mean(lv, 0)
-            i, j = np.unravel_index(np.argmax(lv), lv.shape)
-            t0 = phase[i]*p
-            D = new_search_data.Ds[j]
-            snr[_i] = np.array([float(self.snr(t0, D, p)), t0, D, p])
+        for p, P in enumerate(_progress(periods)):
+            phase, P1, P2 = fold_ll(P)
+            i, j = np.unravel_index(np.argmax(P2), P2.shape)
+            Ti = phase[i]*P
+            Dj = new_search_data.Ds[j]
+            snr[p], params[p] = float(self.snr(Ti, Dj, P)), (Ti, Dj, P)
+            max_ll[p] = P2[i, j] - P2.mean()
         
         new_search_data.periods = periods
-        new_search_data.snr = snr
+        new_search_data.Q_snr = snr
+        new_search_data.Q_ll = max_ll
+        new_search_data.Q_params = params
         
         return new_search_data
 
