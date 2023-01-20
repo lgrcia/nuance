@@ -81,7 +81,7 @@ class Nuance:
 
         @jax.jit
         def eval_transit(t0, D):
-            m = utils.single_transit(self.time, t0, D, 1)
+            m = utils.single_transit(self.time, t0, D)
             _ll, w, v = self.eval_m(m)
             return w[n], v[n, n], _ll
         

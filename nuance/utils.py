@@ -4,23 +4,23 @@ import numpy as np
 
 
 
-def transit(t, t0=None, D=None, d=None, c=12, P=None):
+def transit(t, t0=None, D=None, d=1., c=12, P=None):
     if P is None:
-        return single_transit(t, t0=t0, D=D, d=d, c=c).__array__()
+        return d*single_transit(t, t0=t0, D=D, c=c).__array__()
     else:
-        return periodic_transit(t, t0, D, d, P=P, c=c)
+        return d*periodic_transit(t, t0, D, P=P, c=c)
 
 @jax.jit
-def single_transit(t, t0=None, D=None, d=None, c=12):
+def single_transit(t, t0=None, D=None, c=12):
     a = 0.5*c
     b = c*t/D
     b0 = c*t0/D
 
-    return - 0.5 * (d*jnp.tanh(a-b+b0) + d*jnp.tanh(a+b-b0))
+    return - 0.5 * (jnp.tanh(a-b+b0) + jnp.tanh(a+b-b0))
 
-def periodic_transit(t, t0, D, d, P=1, c=12):
+def periodic_transit(t, t0, D, P=1, c=12):
     _t = P * np.sin(np.pi * (t - t0) / P) / (np.pi * D)
-    return - d + (d / 2) * (2 - np.tanh(c * (_t + 1 / 2)) + np.tanh(c * (_t - 1 / 2)))
+    return 0.5 * (2 - np.tanh(c * (_t + 1 / 2)) + np.tanh(c * (_t - 1 / 2))) - 1.
 
 def interp_split_times(time, p):
     dt = np.median(np.diff(time))
