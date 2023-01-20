@@ -20,7 +20,7 @@ def single_transit(t, t0=None, D=None, c=12):
 
 def periodic_transit(t, t0, D, P=1, c=12):
     _t = P * np.sin(np.pi * (t - t0) / P) / (np.pi * D)
-    return 0.5 * (2 - np.tanh(c * (_t + 1 / 2)) + np.tanh(c * (_t - 1 / 2))) - 1.
+    return - 0.5*np.tanh(c * (_t + 1 / 2)) + 0.5*np.tanh(c * (_t - 1 / 2))
 
 def interp_split_times(time, p):
     dt = np.median(np.diff(time))
