@@ -29,7 +29,7 @@ setup(
             "jupyterlab",
             "myst-parser",
             "twine",
-            "sphinx-book-theme",
+            "sphinx-book-theme @ git+https://github.com/executablebooks/sphinx-book-theme.git@0c404524aed8f1e0009fc03a0f7e04282fd238ab#egg=sphinx-book-theme",
             "black",
             "myst_nb",
             "sphinx-copybutton"
