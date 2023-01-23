@@ -71,5 +71,3 @@ html_theme_options = {
 }
 
 nb_render_image_options = {"align": "center"}
-
-autoclass_both = True
