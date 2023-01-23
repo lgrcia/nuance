@@ -1,8 +1,8 @@
 import jax
 from jax import numpy as jnp
 import numpy as np
-
-
+import tinygp
+jax.config.update("jax_enable_x64", True)
 
 def transit(t, t0=None, D=None, d=1., c=12, P=None):
     if P is None:
@@ -78,3 +78,20 @@ def Ps(lls, zs, vzs):
     P1 = np.sum(lls, 0)
     P2 = P1 + np.sum(log_gauss_product_integral(zs, vzs, Z, vZ), 0)
     return P1, P2
+
+def simulated(t0=0.2, D=0.05, depth=0.02, P=0.7, t=None, kernel=None, error=0.001):
+    if t is None:
+        t = np.arange(0, 4, 2/60/24)
+
+    X = np.vander(t, N=4, increasing=True).T
+    w = [1., 5e-4, -2e-4, -5e-4]
+
+    true_transit = depth*periodic_transit(t, t0, D, P=P)
+    
+    if kernel is None:
+        kernel = tinygp.kernels.quasisep.SHO(np.pi/(6*D), 45., depth)
+    
+    gp = tinygp.GaussianProcess(kernel, t, diag=error**2, mean_value=true_transit + w@X)
+    flux = gp.sample(jax.random.PRNGKey(40))
+    
+    return (t, flux, error), X, kernel

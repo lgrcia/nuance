@@ -3,3 +3,4 @@
 **/__pycache__ 
 dev
 *.egg-info
+docs/build
