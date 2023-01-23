@@ -1,0 +1,10 @@
+sphinx
+nbsphinx
+docutils
+jupyterlab
+myst-parser
+twine
+sphinx-book-theme
+black
+myst_nb
+sphinx-copybutton
