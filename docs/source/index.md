@@ -10,7 +10,9 @@ A python package to search for planetary transits in light curves containing cor
 :caption: Get Started
 
 install.md
-quickstart.ipynb
+single.ipynb
+periodic.ipynb
+multi1.ipynb
 ```
 
 ```{toctree}

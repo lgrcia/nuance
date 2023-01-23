@@ -34,6 +34,7 @@ extensions = [
     "sphinx.ext.napoleon"
 ]
 
+
 templates_path = ['_templates']
 
 # List of patterns, relative to source directory, that match files and
@@ -71,3 +72,7 @@ html_theme_options = {
 }
 
 nb_render_image_options = {"align": "center"}
+
+myst_enable_extensions = [
+    "dollarmath",
+]
