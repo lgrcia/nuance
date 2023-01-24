@@ -8,6 +8,7 @@ A python package to search for planetary transits in light curves containing cor
 
 ```{toctree}
 :caption: Get Started
+:maxdepth: 1
 
 install.md
 single.ipynb
@@ -17,6 +18,7 @@ multi1.ipynb
 
 ```{toctree}
 :caption: Tutorials
+:maxdepth: 1
 
 lc_prep.ipynb
 gp.ipynb
