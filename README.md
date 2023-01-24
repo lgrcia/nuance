@@ -13,15 +13,15 @@
     <a href="">
       <img src="https://img.shields.io/badge/license-MIT-lightgray.svg?style=flat" alt="license"/>
     </a>
-      <a href="">
-      <img src="https://img.shields.io/badge/ReadThe-Doc-blue.svg?style=flat" alt="license"/>
+      <a href="https://nuance.readthedocs.io">
+      <img src="https://img.shields.io/badge/ReadThe-Doc-blue.svg?style=flat" alt="license"/> 
     </a>
   </p>
 </p>
 
 *nuance* uses linear models and gaussian processes (using the [JAX](https://github.com/google/jax)-based [tinygp](https://github.com/dfm/tinygp)) to simultaneously **search for planetary transits while modeling correlated noises** (e.g. stellar variability) in a tractable way.
 
-Documentation at [nuance.readthedocs.io](https://nuance.readthedocs.io/en/dev)
+Documentation at [nuance.readthedocs.io](https://nuance.readthedocs.io)
 
 ## Example
 
