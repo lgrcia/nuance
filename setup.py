@@ -32,7 +32,9 @@ setup(
             "sphinx-book-theme",
             "black",
             "myst_nb",
-            "sphinx-copybutton"
+            "sphinx-copybutton",
+            "jupyter",
+            "ipywidgets"
         ]
     },
     zip_safe=True,
