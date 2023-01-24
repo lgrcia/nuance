@@ -10,56 +10,45 @@
   A Python package to detect exoplanetary transits <br>in the presence of stellar variability and correlated noises
   <br>
   <p align="center">
-    <a href="https://github.com/lgrcia/nuance">
-      <img src="https://img.shields.io/badge/github-lgrcia/nuance-blue.svg?style=flat" alt="github"/>
-    </a>
     <a href="">
       <img src="https://img.shields.io/badge/license-MIT-lightgray.svg?style=flat" alt="license"/>
+    </a>
+      <a href="">
+      <img src="https://img.shields.io/badge/ReadThe-Doc-blue.svg?style=flat" alt="license"/>
     </a>
   </p>
 </p>
 
 *nuance* uses linear models and gaussian processes (using the [JAX](https://github.com/google/jax)-based [tinygp](https://github.com/dfm/tinygp)) to simultaneously **search for planetary transits while modeling correlated noises** (e.g. stellar variability) in a tractable way.
 
+Documentation at [nuance.readthedocs.io](https://nuance.readthedocs.io/en/dev)
+
 ## Example
 
 ```python
-from nuance import Nuance
-from tinygp import kernels, GaussianProcess
+from nuance import Nuance, utils
+import numpy as np
 
-time, diff, diff_error = ...
-# linear model design matrix
-X = ...
+(time, flux, error), X, kernel = utils.simulated()
 
-# defining a gaussian process
-kernel = kernels. ...
-gp = GaussianProcess(kernel, time, diag=diff_error**2)
-nu = Nuance(time, diff_flux, gp, X.T)
+nu = Nuance(time, flux, error, kernel, X=X)
 
-# Linear Search
-# -------------
+# linear search
 t0s = time.copy()
-durations = np.linspace(0.01, 0.1, 10)
-ll, depth, depth_var = nu.linear_search(t0s, durations)
+Ds = np.linspace(0.01, 0.2, 15)
+nu.linear_search(t0s, Ds)
 
-# Periodic Search
-# ---------------
-periods = np.linspace(1, 5, 5000)
-llc, llv = nu.periodic_search(periods)
+# periodic search
+periods = np.linspace(0.3, 5, 2000)
+search = nu.periodic_search(periods)
 
-# result
-i, j = np.unravel_index(np.argmax(llv), llv.shape)
-period = periods[i]
-t0, duration = nu.best_periodic_transit(p0)
+t0, D, P = search.best
 ```
-
-full examples in [docs/notebooks](docs/notebooks)
 
 ## Installation
 
-*nuance* is written for python 3 and can be installed **locally** by cloning this repository
+*nuance* is written for python 3 and can be installed (for now) through
 
 ```shell
-git clone https://github.com/lgrcia/nuance.git
-pip install -e nuance
+pip install git+https://github.com/lgrcia/nuance.git
 ```
