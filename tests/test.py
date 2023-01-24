@@ -8,7 +8,7 @@ time = np.linspace(0, 6, 500)
 diff_error = 0.001
 X = np.vander(time, N=4, increasing=True)
 w = [1., 0.05, -0.2, -0.5]
-true_transit = utils.periodic_transit(time, 0.2/4, 0.05, 0.01, P=1.3)
+true_transit = 0.01 * utils.periodic_transit(time, 0.2/4, 0.05, P=1.3)
 diff_flux = true_transit + np.random.normal(0., diff_error, size=len(time))
 
 
