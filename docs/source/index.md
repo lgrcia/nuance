@@ -1,7 +1,7 @@
 # *nuance*
 
 ```{image} _static/nuance.svg
-:width: 300px
+:height: 300px
 :align: center
 ```
 

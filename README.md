@@ -3,7 +3,7 @@
 # nuance
 
 <p align="center" style="margin-top:20px">
-    <img src="docs/source/_static/nuance.svg" height="200">
+    <img src="docs/source/_static/nuance.svg" height="250">
 </p>
 
 <p align="center">
