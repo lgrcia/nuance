@@ -1,5 +1,10 @@
 # *nuance*
 
+```{image} _static/nuance.svg
+:width: 300px
+:align: center
+```
+
 ```{warning}
 Documentation and code under development
 ```
