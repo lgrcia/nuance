@@ -10,6 +10,10 @@ import numpy as np
 from dataclasses import dataclass
 import multiprocessing as mp
 from functools import partial
+from multiprocessing import cpu_count
+from . import CPU_counts
+import multiprocess as mp
+from tqdm import tqdm
 
 
 @dataclass
@@ -104,25 +108,35 @@ class Nuance:
         None
         """
 
-        ll = np.zeros((len(t0s), len(Ds)))
-        depths = np.zeros((len(t0s), len(Ds)))
-        vars = ll.copy()
-        depths = ll.copy()
         n = len(self.X)
-
-        _progress = lambda x: tqdm(x) if progress else x
-
+        
         @jax.jit
         def eval_transit(t0, D):
             m = utils.single_transit(self.time, t0, D)
             _ll, w, v = self.eval_m(m)
             return w[n], v[n, n], _ll
 
-        f = jax.vmap(eval_transit, in_axes=(None, 0))
-        for i, t0 in enumerate(_progress(t0s)):
-            depths[i, :], vars[i, :], ll[i, :] = f(t0, Ds)
+        chunk_size = CPU_counts 
+        chunks = int(np.ceil(len(t0s)/chunk_size))
+        padded_t0s = np.pad(t0s, pad_width=[0, chunks*chunk_size-len(t0s)])
+        splitted_t0s = np.array(np.array_split(padded_t0s, chunks))
 
-        ll = np.array(ll)
+        ll = np.zeros((len(padded_t0s), len(Ds)))
+        depths = ll.copy()
+        vars = ll.copy()
+        depths = ll.copy()
+
+        f = jax.pmap(eval_transit, in_axes=(0, None))
+        g = jax.vmap(f, in_axes=(None, 0))
+        for i, t0 in enumerate(tqdm(splitted_t0s, unit_scale=CPU_counts)):
+            _depths, _vars, _ll = g(t0, Ds)
+            depths[i*CPU_counts:(i+1)*CPU_counts, :] = _depths.T
+            vars[i*CPU_counts:(i+1)*CPU_counts, :] = _vars.T
+            ll[i*CPU_counts:(i+1)*CPU_counts, :] = _ll.T
+
+        depths = np.array(depths[0:len(t0s), :])
+        vars = np.array(vars[0:len(t0s), :])
+        ll = np.array(ll[0:len(t0s), :])
 
         if positive:
             ll0 = self.eval_m(np.zeros_like(self.time))[0]
@@ -156,20 +170,19 @@ class Nuance:
         max_ll = snr.copy()
         params = np.zeros((n, 3))
 
-        _progress = lambda x: tqdm(x) if progress else x
-
-        for p, P in enumerate(_progress(periods)):
-            phase, P1, P2 = fold_ll(P)
-            _P = P2 if fancy else P1
-            i, j = np.unravel_index(np.argmax(_P), _P.shape)
-            Ti = phase[i] * P
-            Dj = new_search_data.Ds[j]
-            snr[p], params[p] = float(self.snr(Ti, Dj, P)), (Ti, Dj, P)
-            max_ll[p] = _P[i, j] - _P.mean()
+        def _progress(x, **kwargs): return tqdm(x, **kwargs) if progress else x
+        
+        global SEARCH
+        SEARCH = self.search_data.fold_ll
+    
+        with mp.Pool() as pool:
+            for p, (Ti, j, P) in enumerate(_progress(pool.imap(_search, periods), total=len(periods))):
+                Dj = new_search_data.Ds[j]
+                pass
+                snr[p], params[p] = float(self.snr(Ti, Dj, P)), (Ti, Dj, P)
 
         new_search_data.periods = periods
         new_search_data.Q_snr = snr
-        new_search_data.Q_ll = max_ll
         new_search_data.Q_params = params
 
         return new_search_data
@@ -394,3 +407,9 @@ class Nuance:
         )
         nu.search_data = search_data
         return nu
+
+def _search(p):
+    phase, P1, P2 = SEARCH(p)
+    i, j = np.unravel_index(np.argmax(P2), P2.shape)
+    Ti = phase[i] * p
+    return Ti, j, p
