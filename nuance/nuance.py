@@ -134,7 +134,7 @@ class Nuance:
             t0s=t0s, Ds=Ds, ll=ll, z=depths, vz=vars, ll0=self.ll0
         )
 
-    def periodic_search(self, periods: np.ndarray, progress=True):
+    def periodic_search(self, periods: np.ndarray, progress=True, fancy=True):
         """Performs the periodic search
 
         Parameters
@@ -160,11 +160,12 @@ class Nuance:
 
         for p, P in enumerate(_progress(periods)):
             phase, P1, P2 = fold_ll(P)
-            i, j = np.unravel_index(np.argmax(P2), P2.shape)
+            _P = P2 if fancy else P1
+            i, j = np.unravel_index(np.argmax(_P), _P.shape)
             Ti = phase[i] * P
             Dj = new_search_data.Ds[j]
             snr[p], params[p] = float(self.snr(Ti, Dj, P)), (Ti, Dj, P)
-            max_ll[p] = P2[i, j] - P2.mean()
+            max_ll[p] = _P[i, j] - _P.mean()
 
         new_search_data.periods = periods
         new_search_data.Q_snr = snr
