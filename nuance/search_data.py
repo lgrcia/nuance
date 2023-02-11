@@ -48,10 +48,14 @@ class SearchData:
         folds = self.folds
         
         def _fold(p):
-            pt0s, (lls, zs, vzs) = folds(p)
-            P1, P2 = utils.Ps(lls, zs, vzs)   
-            
-            return pt0s[0]/p, P1, P2
+            pt0s, (lls, zs, vzs) = folds(p) 
+            P1 = np.sum(lls, 0)
+            vZ = 1/np.sum(1/vzs, 0)
+            Z = vZ * np.sum(zs/vzs, 0)
+            P1 = np.sum(lls, 0)
+            P2 = 0.5*np.sum(np.log(vzs) - np.log(vzs + vZ) + (zs-Z)**2/(vzs+vZ), 0)
+                    
+            return pt0s[0]/p, P1, P1-P2
             
         return _fold
 
