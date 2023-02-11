@@ -409,7 +409,7 @@ class Nuance:
         return nu
 
 def _search(p):
-    phase, P1, P2 = SEARCH(p)
+    phase, _, P2 = SEARCH(p)
     i, j = np.unravel_index(np.argmax(P2), P2.shape)
     Ti = phase[i] * p
     return Ti, j, p
