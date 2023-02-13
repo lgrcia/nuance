@@ -2,6 +2,7 @@ import jax
 from jax import numpy as jnp
 import numpy as np
 import tinygp
+import matplotlib.pyplot as plt
 jax.config.update("jax_enable_x64", True)
 
 def transit(t, t0=None, D=None, d=1., c=12, P=None):
@@ -95,3 +96,28 @@ def simulated(t0=0.2, D=0.05, depth=0.02, P=0.7, t=None, kernel=None, error=0.00
     flux = gp.sample(jax.random.PRNGKey(40))
     
     return (t, flux, error), X, kernel
+
+def plot_search(nu, search):
+    plt.figure(None, (12, 4))
+    t0, D, P = search.best
+
+    plt.subplot(2, 2, (1, 3))
+    plt.plot(search.periods, search.Q_snr)
+    plt.title(f"{P:.5f} days")
+
+    mean, astro, noise = nu.models(t0, D, P)
+
+    plt.subplot(2, 2, 2)
+    plt.plot(nu.flux - mean, ".", c="0.8")
+    plt.plot(astro, c="k", label="found")
+    ylim = plt.ylim()
+    _ = plt.legend()
+
+    plt.subplot(2, 2, 4)
+    mean, astro, noise = nu.models(t0, D, P)
+    phi = phase(nu.time, t0, P)
+    detrended = nu.flux - noise - mean
+    plt.plot(phi, detrended, ".", c=".8")
+    plt.plot(*binn(phi, detrended, 50), ".", c="k")
+    plt.xlim(*(np.array([-1, 1])*10*D))
+    plt.ylim(*(np.array([-1, 1])*float(np.abs(astro.min()))*4))

@@ -20,7 +20,7 @@ setup(
     # """,
     long_description=README,
     long_description_content_type="text/markdown",
-    install_requires=["numpy", "jax", "jaxopt", "tinygp", "tqdm"],
+    install_requires=["numpy", "jax", "jaxopt", "tinygp", "tqdm", "multiprocess"],
     extras_require={
         "dev": [
             "sphinx",

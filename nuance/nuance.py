@@ -14,13 +14,22 @@ from multiprocessing import cpu_count
 from . import CPU_counts
 import multiprocess as mp
 from tqdm import tqdm
-
+from dataclasses import asdict
+from copy import deepcopy
+import pickle
 
 @dataclass
 class Nuance:
-    def __init__(
-        self, time, flux, error=None, kernel=None, X=None, compute=True, mean=0.0
-    ):
+    time: np.ndarray
+    flux: np.ndarray
+    error: np.ndarray = None
+    kernel: None = None
+    X: np.ndarray = None
+    compute: bool = True
+    mean: float = 0.0
+    search_data: SearchData = None
+
+    def __post_init__(self):
         """Nuance
 
         Parameters
@@ -34,23 +43,15 @@ class Nuance:
         X : ndarray, optional
             design matrix, by default None
         """
-        self.time = time
-        self.flux = flux
-        self.error = error
-        self.kernel = kernel
-        self.mean = mean
+        if self.X is None:
+            self.X = np.atleast_2d(np.ones_like(self.time))
 
-        if X is None:
-            X = np.atleast_2d(np.ones_like(time))
+        if self.kernel is None:
+            self.kernel = kernels.Constant(0.0)
 
-        self.X = X
+        self.gp = GaussianProcess(self.kernel, self.time, diag=self.error**2, mean=self.mean)
 
-        if kernel is None:
-            kernel = kernels.Constant(0.0)
-
-        self.gp = GaussianProcess(kernel, time, diag=error**2, mean=mean)
-
-        if compute:
+        if self.compute:
             self._compute_L()
 
         self.search_data = None
@@ -407,6 +408,39 @@ class Nuance:
         )
         nu.search_data = search_data
         return nu
+
+    def flares_mask(self, window = 30, sigma=4, iterations=3):
+        mask = np.ones_like(self.time).astype(bool)
+        window = 30
+
+        def build_gp(params, x):
+            return GaussianProcess(self.kernel, x, diag=np.mean(self.error)**2, mean=0.)
+
+        optimize, mu, nll = self.gp_optimization(build_gp)
+        
+        for i in range(iterations):
+            m = mu(None)
+            r = (self.flux - m)
+            mask_up = r < np.std(r[mask])*sigma
+
+            # mask around flares
+            ups = np.flatnonzero(~mask_up)
+            if len(ups) > 0:
+                mask[np.hstack([np.arange(max(u-window, 0), min(u+window, len(self.time))) for u in ups])] = False
+
+            _, mu, _ = self.gp_optimization(build_gp, mask=mask)
+
+        return ~mask
+
+    def save(self, filename):
+        pickle.dump(asdict(self), open(filename, "wb"))
+
+    def copy(self):
+        return deepcopy(self)
+
+    @classmethod
+    def load(cls, filename):
+        return cls(**pickle.load(open(filename, "rb")))
 
 def _search(p):
     phase, _, P2 = SEARCH(p)

@@ -4,6 +4,9 @@ from dataclasses import dataclass
 from . import utils
 import matplotlib.pyplot as plt
 import copy
+from dataclasses import asdict
+from copy import deepcopy
+import pickle
 
 @dataclass
 class SearchData:
@@ -98,3 +101,17 @@ class SearchData:
         new_search_data.vz = new_search_data.vz[mask]
 
         return new_search_data
+
+    def asdict(self):
+        return asdict(self)
+        
+    def save(self, filename):
+        pickle.dump(self.asdict(), open(filename, "wb"))
+
+    def copy(self):
+        return deepcopy(self)
+
+    @classmethod
+    def load(cls, filename):
+        return cls(**pickle.load(open(filename, "rb")))
+        
