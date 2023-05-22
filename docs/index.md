@@ -12,8 +12,19 @@ Documentation and code under development
 A python package to search for planetary transits in light curves containing correlated noise (like instrumental systematics or stellar variability). Powered by [JAX](https://github.com/google/jax) and [tinygp](https://github.com/dfm/tinygp).
 
 ```{toctree}
-:maxdepth: 2
+:maxdepth: 1
+:caption: Get started
 
-markdown/getstarted
+install.md
+notebooks/single.ipynb
+notebooks/periodic.ipynb
+notebooks/multi.ipynb
+
+```
+
+```{toctree}
+:maxdepth: 1
+:caption: Reference
+
 markdown/API
 ```
