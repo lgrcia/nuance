@@ -1,5 +1,7 @@
 import multiprocessing as mp
-from dataclasses import dataclass
+import pickle
+from copy import deepcopy
+from dataclasses import asdict, dataclass
 from multiprocessing import set_start_method
 
 import jax
@@ -8,18 +10,13 @@ import jaxopt
 import multiprocess as mp
 import numpy as np
 from tinygp import GaussianProcess, kernels
+from tqdm import tqdm
 from tqdm.autonotebook import tqdm
 
 from . import CPU_counts, utils
 from .search_data import SearchData
 
-set_start_method("spawn")
-
-import pickle
-from copy import deepcopy
-from dataclasses import asdict
-
-from tqdm import tqdm
+# set_start_method("spawn")
 
 
 @dataclass
