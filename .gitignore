@@ -80,4 +80,5 @@ target/
 **/__pycache__ 
 dev
 *.egg-info
-docs/build
+docs/_build
+generated/
