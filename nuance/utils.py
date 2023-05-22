@@ -107,12 +107,10 @@ def simulated(t0=0.2, D=0.05, depth=0.02, P=0.7, t=None, kernel=None, error=0.00
     if kernel is None:
         kernel = tinygp.kernels.quasisep.SHO(np.pi / (6 * D), 45.0, depth)
 
-    gp = tinygp.GaussianProcess(
-        kernel, t, diag=error**2, mean_value=true_transit + w @ X
-    )
-    flux = gp.sample(jax.random.PRNGKey(40))
+    gp = tinygp.GaussianProcess(kernel, t, diag=error**2, mean=0.0)
+    flux = gp.sample(jax.random.PRNGKey(40)) + true_transit + w @ X
 
-    return (t, flux, error), X, kernel
+    return (t, flux, error), X, gp
 
 
 def plot_search(nu, search):

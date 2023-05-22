@@ -29,9 +29,9 @@ Documentation at [nuance.readthedocs.io](https://nuance.readthedocs.io)
 from nuance import Nuance, utils
 import numpy as np
 
-(time, flux, error), X, kernel = utils.simulated()
+(time, flux, error), X, gp = utils.simulated()
 
-nu = Nuance(time, flux, error, kernel, X=X)
+nu = Nuance(time, flux, gp=gp, X=X)
 
 # linear search
 t0s = time.copy()
