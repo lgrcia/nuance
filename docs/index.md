@@ -19,7 +19,7 @@ A python package to search for planetary transits in light curves containing cor
 :maxdepth: 1
 :caption: Get started
 
-install.md
+markdown/install
 notebooks/single.ipynb
 notebooks/periodic.ipynb
 notebooks/multi.ipynb
