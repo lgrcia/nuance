@@ -1,0 +1,37 @@
+[tool.poetry]
+name = "nuance"
+version = "0.1.0"
+description = "Transit detection in correlated noises"
+authors = ["Lionel Garcia"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.8,<3.12"
+tinygp = "*"
+jax = "*"
+jaxlib = "*"
+jaxopt = "*"
+numpy = "*"
+matplotlib= "*"
+scipy = "*"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "*"
+black = "*"
+
+[tool.poetry.group.docs.dependencies]
+sphinx = "*"
+docutils = "*"
+jupyterlab = "*"
+myst-parser = "*"
+sphinx-book-theme = "^1.0.0"
+myst-nb = "*"
+sphinx-copybutton = "*"
+sphinx-design = "*"
+toml = "*"
+ipywidgets = "*"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

@@ -1,26 +1,44 @@
-import jax
-from tinygp import kernels, GaussianProcess
-import numpy as np
-import jax.numpy as jnp
-from . import utils
-from tqdm.autonotebook import tqdm
-from .search_data import SearchData
-import jaxopt
-import numpy as np
-from dataclasses import dataclass
 import multiprocessing as mp
-from functools import partial
-from multiprocessing import cpu_count
-from . import CPU_counts
+import pickle
+from copy import deepcopy
+from dataclasses import asdict, dataclass
+from multiprocessing import set_start_method
+
+import jax
+import jax.numpy as jnp
+import jaxopt
 import multiprocess as mp
+import numpy as np
+from tinygp import GaussianProcess, kernels
 from tqdm import tqdm
+from tqdm.autonotebook import tqdm
+
+from . import CPU_counts, utils
+from .search_data import SearchData
+
+# set_start_method("spawn")
 
 
 @dataclass
 class Nuance:
-    def __init__(
-        self, time, flux, error=None, kernel=None, X=None, compute=True, mean=0.0
-    ):
+    time: np.ndarray
+    """Time"""
+    flux: np.ndarray
+    """Flux time series"""
+    error: np.ndarray = None
+    """Flux error time series"""
+    gp: GaussianProcess = None
+    """Gaussian process instance"""
+    X: np.ndarray = None
+    """Design matrix"""
+    compute: bool = True
+    """Whether to pre-compute the Cholesky decomposition"""
+    mean: float = 0.0
+    """Mean of the GP"""
+    search_data: SearchData = None
+    """Search data instance"""
+
+    def __post_init__(self):
         """Nuance
 
         Parameters
@@ -34,29 +52,26 @@ class Nuance:
         X : ndarray, optional
             design matrix, by default None
         """
-        self.time = time
-        self.flux = flux
-        self.error = error
-        self.kernel = kernel
-        self.mean = mean
+        assert (self.error is None) ^ (
+            self.gp is None
+        ), "Either error or gp must be defined"
 
-        if X is None:
-            X = np.atleast_2d(np.ones_like(time))
+        if self.X is None:
+            self.X = np.atleast_2d(np.ones_like(self.time))
 
-        self.X = X
+        if self.gp is None:
+            kernel = kernels.quasisep.Exp(1e12)
 
-        if kernel is None:
-            kernel = kernels.Constant(0.0)
+            self.gp = GaussianProcess(
+                kernel, self.time, diag=self.error**2, mean=self.mean
+            )
 
-        self.gp = GaussianProcess(kernel, time, diag=error**2, mean=mean)
-
-        if compute:
+        if self.compute:
             self._compute_L()
 
         self.search_data = None
 
     def _compute_L(self):
-
         Liy = self.gp.solver.solve_triangular(self.flux)
         LiX = self.gp.solver.solve_triangular(self.X.T)
 
@@ -109,16 +124,16 @@ class Nuance:
         """
 
         n = len(self.X)
-        
+
         @jax.jit
         def eval_transit(t0, D):
             m = utils.single_transit(self.time, t0, D)
             _ll, w, v = self.eval_m(m)
             return w[n], v[n, n], _ll
 
-        chunk_size = CPU_counts 
-        chunks = int(np.ceil(len(t0s)/chunk_size))
-        padded_t0s = np.pad(t0s, pad_width=[0, chunks*chunk_size-len(t0s)])
+        chunk_size = CPU_counts
+        chunks = int(np.ceil(len(t0s) / chunk_size))
+        padded_t0s = np.pad(t0s, pad_width=[0, chunks * chunk_size - len(t0s)])
         splitted_t0s = np.array(np.array_split(padded_t0s, chunks))
 
         ll = np.zeros((len(padded_t0s), len(Ds)))
@@ -126,17 +141,19 @@ class Nuance:
         vars = ll.copy()
         depths = ll.copy()
 
+        _progress = lambda x: tqdm(x, unit_scale=CPU_counts) if progress else x
+
         f = jax.pmap(eval_transit, in_axes=(0, None))
         g = jax.vmap(f, in_axes=(None, 0))
-        for i, t0 in enumerate(tqdm(splitted_t0s, unit_scale=CPU_counts)):
+        for i, t0 in enumerate(_progress(splitted_t0s)):
             _depths, _vars, _ll = g(t0, Ds)
-            depths[i*CPU_counts:(i+1)*CPU_counts, :] = _depths.T
-            vars[i*CPU_counts:(i+1)*CPU_counts, :] = _vars.T
-            ll[i*CPU_counts:(i+1)*CPU_counts, :] = _ll.T
+            depths[i * CPU_counts : (i + 1) * CPU_counts, :] = _depths.T
+            vars[i * CPU_counts : (i + 1) * CPU_counts, :] = _vars.T
+            ll[i * CPU_counts : (i + 1) * CPU_counts, :] = _ll.T
 
-        depths = np.array(depths[0:len(t0s), :])
-        vars = np.array(vars[0:len(t0s), :])
-        ll = np.array(ll[0:len(t0s), :])
+        depths = np.array(depths[0 : len(t0s), :])
+        vars = np.array(vars[0 : len(t0s), :])
+        ll = np.array(ll[0 : len(t0s), :])
 
         if positive:
             ll0 = self.eval_m(np.zeros_like(self.time))[0]
@@ -148,7 +165,7 @@ class Nuance:
             t0s=t0s, Ds=Ds, ll=ll, z=depths, vz=vars, ll0=self.ll0
         )
 
-    def periodic_search(self, periods: np.ndarray, progress=True, fancy=True):
+    def periodic_search(self, periods: np.ndarray, progress=True):
         """Performs the periodic search
 
         Parameters
@@ -164,19 +181,20 @@ class Nuance:
             search results
         """
         new_search_data = self.search_data.copy()
-        fold_ll = new_search_data.fold_ll
         n = len(periods)
         snr = np.zeros(n)
-        max_ll = snr.copy()
         params = np.zeros((n, 3))
 
-        def _progress(x, **kwargs): return tqdm(x, **kwargs) if progress else x
-        
+        def _progress(x, **kwargs):
+            return tqdm(x, **kwargs) if progress else x
+
         global SEARCH
         SEARCH = self.search_data.fold_ll
-    
+
         with mp.Pool() as pool:
-            for p, (Ti, j, P) in enumerate(_progress(pool.imap(_search, periods), total=len(periods))):
+            for p, (Ti, j, P) in enumerate(
+                _progress(pool.imap(_search, periods), total=len(periods))
+            ):
                 Dj = new_search_data.Ds[j]
                 pass
                 snr[p], params[p] = float(self.snr(Ti, Dj, P)), (Ti, Dj, P)
@@ -200,7 +218,6 @@ class Nuance:
         if mask is None:
             mask = mask = np.ones_like(self.time).astype(bool)
 
-        masked_x = self.time[mask]
         masked_y = self.flux[mask]
         masked_X = self.X[:, mask]
 
@@ -214,7 +231,7 @@ class Nuance:
 
         return _mu()
 
-    def models(self, t0: float, D: float, P: float=None):
+    def models(self, t0: float, D: float, P: float = None):
         """Return the models corresponding the transit of epoch `t0` and duration `D`(and period `P` for a periodic transit)
 
         Parameters
@@ -251,7 +268,7 @@ class Nuance:
         m = utils.transit(self.time, t0, D, 1, P=P)
         return self._models(m)
 
-    def solve(self, t0:float, D:float, P:float=None):
+    def solve(self, t0: float, D: float, P: float = None):
         """solve linear model (design matrix `Nuance.X`)
 
         Parameters
@@ -272,7 +289,7 @@ class Nuance:
         _, w, v = self.eval_m(m)
         return w, v
 
-    def depth(self, t0: float, D: float, P: float=None):
+    def depth(self, t0: float, D: float, P: float = None):
         """depth linearly solved for epoch `t0` and duration `D` (and period `P` for a periodic transit)
 
         Parameters
@@ -292,7 +309,7 @@ class Nuance:
         w, v = self.solve(t0, D, P)
         return w[-1], np.sqrt(v[-1, -1])
 
-    def snr(self, t0: float, D: float, P: float=None):
+    def snr(self, t0: float, D: float, P: float = None):
         """SNR of transit linearly solved for epoch `t0` and duration `D` (and period `P` for a periodic transit)
 
         Parameters
@@ -360,22 +377,22 @@ class Nuance:
 
         return optimize, mu, nll
 
-    def mask(self, t0, D, P):
-        """Return a `Nuance` where the transit of epoch `t0` and duration `D` and period `P` is masked.
+    def mask(self, t0: float, D: float, P: float):
+        """Return a `Nuance` object where the transit of epoch `t0` and duration `D` and period `P` is masked.
 
         Parameters
         ----------
-        t0 : _type_
-            _description_
-        D : _type_
-            _description_
-        P : _type_
-            _description_
+        t0 : float
+            transit epoch
+        D : float
+            transit duration
+        P : float
+            transit period
 
         Returns
         -------
-        _type_
-            _description_
+        `Nuance`
+            A `Nuance` instance with transit masked.
         """
         # search data
         search_data = self.search_data.copy()
@@ -407,6 +424,70 @@ class Nuance:
         )
         nu.search_data = search_data
         return nu
+
+    # The all thing needs to be rewritten
+    def flares_mask(self, window=30, sigma=4, iterations=3):
+        """Return a mask where flares are masked.
+
+        Parameters
+        ----------
+        window : int, optional
+            The sliding mask window (typical number of points of a flare duration),
+            by default 30
+        sigma : int, optional
+            Flare sigma-clipping factor, by default 4
+        iterations : int, optional
+            Number of iterations, by default 3
+
+        Returns
+        -------
+        np.ndarray
+            Flare mask
+        """
+        raise NotImplementedError
+        mask = np.ones_like(self.time).astype(bool)
+        window = 30
+
+        def build_gp(params, x):
+            return GaussianProcess(
+                self.kernel, x, diag=np.mean(self.error) ** 2, mean=0.0
+            )
+
+        _, mu, _ = self.gp_optimization(build_gp)
+
+        for _ in range(iterations):
+            m = mu(None)
+            r = self.flux - m
+            mask_up = r < np.std(r[mask]) * sigma
+
+            # mask around flares
+            ups = np.flatnonzero(~mask_up)
+            if len(ups) > 0:
+                mask[
+                    np.hstack(
+                        [
+                            np.arange(
+                                max(u - window, 0), min(u + window, len(self.time))
+                            )
+                            for u in ups
+                        ]
+                    )
+                ] = False
+
+            _, mu, _ = self.gp_optimization(build_gp, mask=mask)
+
+        return ~mask
+
+    def save(self, filename):
+        pickle.dump(asdict(self), open(filename, "wb"))
+
+    def copy(self):
+        return deepcopy(self)
+
+    @classmethod
+    def load(cls, filename):
+        return cls(**pickle.load(open(filename, "rb")))
+
 
 def _search(p):
     phase, _, P2 = SEARCH(p)
