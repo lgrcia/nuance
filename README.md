@@ -19,7 +19,7 @@
   </p>
 </p>
 
-*nuance* uses linear models and gaussian processes (using the [JAX](https://github.com/google/jax)-based [tinygp](https://github.com/dfm/tinygp)) to simultaneously **search for planetary transits while modeling correlated noises** (e.g. stellar variability) in a tractable way.
+`nuance` uses linear models and gaussian processes (using the [JAX](https://github.com/google/jax)-based [tinygp](https://github.com/dfm/tinygp)) to simultaneously **search for planetary transits while modeling correlated noises** (e.g. stellar variability) in a tractable way.
 
 Documentation at [nuance.readthedocs.io](https://nuance.readthedocs.io)
 
@@ -47,8 +47,16 @@ t0, D, P = search.best
 
 ## Installation
 
-*nuance* is written for python 3 and can be installed (for now) through
+`nuance` is written for python 3 and can be installed using pip
 
 ```shell
-pip install git+https://github.com/lgrcia/nuance.git
+pip install nuance
+```
+
+or from sources
+  
+```shell
+git clone https://github.com/lgrcia/nuance
+cd nuance
+pip install -e .
 ```
