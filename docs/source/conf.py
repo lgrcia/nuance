@@ -17,9 +17,9 @@
 
 # -- Project information -----------------------------------------------------
 
-project = 'nuance'
-copyright = '2023, Lionel Garcia'
-author = 'Lionel Garcia'
+project = "nuance"
+copyright = "2023, Lionel Garcia"
+author = "Lionel Garcia"
 
 
 # -- General configuration ---------------------------------------------------
@@ -31,11 +31,11 @@ extensions = [
     "myst_nb",
     "sphinx_copybutton",
     "sphinx.ext.autodoc",
-    "sphinx.ext.napoleon"
+    "sphinx.ext.napoleon",
 ]
 
 
-templates_path = ['_templates']
+templates_path = ["_templates"]
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -59,9 +59,9 @@ html_static_path = []
 html_title = "nuance"
 
 source_suffix = {
-    '.rst': 'restructuredtext',
-    '.ipynb': 'myst-nb',
-    '.myst': 'myst-nb',
+    ".rst": "restructuredtext",
+    ".ipynb": "myst-nb",
+    ".myst": "myst-nb",
 }
 
 root_doc = "index"
@@ -69,7 +69,7 @@ root_doc = "index"
 html_theme_options = {
     "repository_url": "https://github.com/lgrcia/nuance",
     "use_repository_button": True,
-    "show_navbar_depth": 2
+    "show_navbar_depth": 2,
 }
 
 nb_render_image_options = {"align": "center"}
