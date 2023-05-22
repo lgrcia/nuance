@@ -21,6 +21,10 @@ from .search_data import SearchData
 
 @dataclass
 class Nuance:
+    """
+    An object for nuanced transit search
+    """
+
     time: np.ndarray
     """Time"""
     flux: np.ndarray
@@ -39,19 +43,6 @@ class Nuance:
     """Search data instance"""
 
     def __post_init__(self):
-        """Nuance
-
-        Parameters
-        ----------
-        x : array
-            dimension
-        y : array
-            observed
-        gp : array or tinygp.gp.GaussianProcess
-            error or tinygp.GaussianProcess instance
-        X : ndarray, optional
-            design matrix, by default None
-        """
         assert (self.error is None) ^ (
             self.gp is None
         ), "Either error or gp must be defined"
@@ -215,6 +206,23 @@ class Nuance:
         return mean, signal, noise
 
     def mu(self, mask=None):
+        """
+        Computes the mean model of the GP.
+
+        Parameters
+        ----------
+        mask : np.ndarray, optional
+            A boolean mask to apply to the data, by default None.
+
+        Returns
+        -------
+        np.ndarray
+            The mean model of the GP.
+
+        Example
+        -------
+        >>> mu = model.mu()
+        """
         if mask is None:
             mask = mask = np.ones_like(self.time).astype(bool)
 
@@ -330,6 +338,24 @@ class Nuance:
         return w / dw
 
     def gp_optimization(self, build_gp, mask=None):
+        """
+        Optimize the Gaussian Process (GP) model using the given build_gp function.
+
+        Parameters
+        ----------
+        build_gp : function
+            A function that returns a GP object.
+        mask : array-like, optional
+            A boolean array to mask the data, by default None.
+
+        Returns
+        -------
+        tuple
+            A tuple containing three functions:
+            - optimize: a function that optimizes the GP model.
+            - mu: a function that returns the mean of the GP model.
+            - nll: a function that returns the negative log-likelihood of the GP model.
+        """
         if mask is None:
             mask = mask = np.ones_like(self.time).astype(bool)
 
@@ -397,30 +423,40 @@ class Nuance:
         # search data
         search_data = self.search_data.copy()
         ph = utils.phase(search_data.t0s, t0, P)
-        mask = np.abs(ph) > 2 * D
+        t0_mask = np.abs(ph) > 2 * D
+
+        if np.count_nonzero(t0_mask) == len(search_data.t0s):
+            raise ValueError("Mask covers all data points")
+        elif len(t0_mask) == 0:
+            raise ValueError("No transit to mask")
 
         search_data.llv = None
         search_data.llc = None
         search_data.periods = None
-        search_data.t0s = search_data.t0s[mask]
-        search_data.ll = search_data.ll[mask]
-        search_data.z = search_data.z[mask]
-        search_data.vz = search_data.vz[mask]
+        search_data.t0s = search_data.t0s[t0_mask]
+        search_data.ll = search_data.ll[t0_mask]
+        search_data.z = search_data.z[t0_mask]
+        search_data.vz = search_data.vz[t0_mask]
 
         # nu
         ph = utils.phase(self.time, t0, P)
-        mask = np.abs(ph) > 2 * D
-        if isinstance(self.error, np.ndarray):
-            error = self.error[mask]
-        else:
-            error = self.error
+        t0_mask = np.abs(ph) > 2 * D
+
+        ph = utils.phase(self.time, t0, P)
+        time_mask = np.abs(ph) > 2 * D
+        gp = GaussianProcess(
+            self.gp.kernel,
+            self.time[time_mask],
+            mean=0.0,
+            diag=self.gp.variance[time_mask],
+        )
 
         nu = Nuance(
-            self.time[mask],
-            self.flux[mask],
-            error=error,
-            kernel=self.kernel,
-            X=self.X[:, mask],
+            self.time[time_mask],
+            self.flux[time_mask],
+            gp=gp,
+            X=self.X[:, time_mask],
+            mean=0.0,
         )
         nu.search_data = search_data
         return nu
@@ -479,13 +515,33 @@ class Nuance:
         return ~mask
 
     def save(self, filename):
+        """Save the current state of the object to a file.
+
+        Parameters
+        ----------
+        filename : str
+            The name of the file to save the object to.
+        """
         pickle.dump(asdict(self), open(filename, "wb"))
 
     def copy(self):
+        """Return a deep copy of the object."""
         return deepcopy(self)
 
     @classmethod
     def load(cls, filename):
+        """Load an object from a file.
+
+        Parameters
+        ----------
+        filename : str
+            The name of the file to load the object from.
+
+        Returns
+        -------
+        Nuance
+            The loaded object.
+        """
         return cls(**pickle.load(open(filename, "rb")))
 
 
