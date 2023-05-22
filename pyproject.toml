@@ -16,6 +16,7 @@ numpy = "*"
 matplotlib = "*"
 scipy = "*"
 multiprocess = "*"
+tqdm = "*"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "*"

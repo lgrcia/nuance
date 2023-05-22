@@ -21,6 +21,10 @@ from .search_data import SearchData
 
 @dataclass
 class Nuance:
+    """
+    An object for nuanced transit search
+    """
+
     time: np.ndarray
     """Time"""
     flux: np.ndarray
@@ -39,19 +43,6 @@ class Nuance:
     """Search data instance"""
 
     def __post_init__(self):
-        """Nuance
-
-        Parameters
-        ----------
-        x : array
-            dimension
-        y : array
-            observed
-        gp : array or tinygp.gp.GaussianProcess
-            error or tinygp.GaussianProcess instance
-        X : ndarray, optional
-            design matrix, by default None
-        """
         assert (self.error is None) ^ (
             self.gp is None
         ), "Either error or gp must be defined"
@@ -397,30 +388,40 @@ class Nuance:
         # search data
         search_data = self.search_data.copy()
         ph = utils.phase(search_data.t0s, t0, P)
-        mask = np.abs(ph) > 2 * D
+        t0_mask = np.abs(ph) > 2 * D
+
+        if np.count_nonzero(t0_mask) == len(search_data.t0s):
+            raise ValueError("Mask covers all data points")
+        elif len(t0_mask) == 0:
+            raise ValueError("No transit to mask")
 
         search_data.llv = None
         search_data.llc = None
         search_data.periods = None
-        search_data.t0s = search_data.t0s[mask]
-        search_data.ll = search_data.ll[mask]
-        search_data.z = search_data.z[mask]
-        search_data.vz = search_data.vz[mask]
+        search_data.t0s = search_data.t0s[t0_mask]
+        search_data.ll = search_data.ll[t0_mask]
+        search_data.z = search_data.z[t0_mask]
+        search_data.vz = search_data.vz[t0_mask]
 
         # nu
         ph = utils.phase(self.time, t0, P)
-        mask = np.abs(ph) > 2 * D
-        if isinstance(self.error, np.ndarray):
-            error = self.error[mask]
-        else:
-            error = self.error
+        t0_mask = np.abs(ph) > 2 * D
+
+        ph = utils.phase(self.time, t0, P)
+        time_mask = np.abs(ph) > 2 * D
+        gp = GaussianProcess(
+            self.gp.kernel,
+            self.time[time_mask],
+            mean=0.0,
+            diag=self.gp.variance[time_mask],
+        )
 
         nu = Nuance(
-            self.time[mask],
-            self.flux[mask],
-            error=error,
-            kernel=self.kernel,
-            X=self.X[:, mask],
+            self.time[time_mask],
+            self.flux[time_mask],
+            gp=gp,
+            X=self.X[:, time_mask],
+            mean=0.0,
         )
         nu.search_data = search_data
         return nu

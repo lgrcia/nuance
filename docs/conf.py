@@ -32,6 +32,7 @@ extensions = [
     "sphinx_copybutton",
     "sphinx.ext.autodoc",
     "sphinx.ext.napoleon",
+    "sphinx.ext.autosummary",
 ]
 
 
@@ -53,7 +54,7 @@ html_theme = "sphinx_book_theme"
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = []
+html_static_path = ["_static"]
 
 # Mine
 html_title = "nuance"
@@ -74,6 +75,11 @@ html_theme_options = {
 
 nb_render_image_options = {"align": "center"}
 
+html_css_files = ["style.css"]
+
 myst_enable_extensions = [
     "dollarmath",
 ]
+
+autodoc_typehints = "signature"
+autoclass_content = "both"
