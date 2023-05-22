@@ -128,9 +128,17 @@ code span.pre {
 } */
 
 .version-nb {
-    margin-top: -12px;
+    margin-top: -5px;
     font-style: italic;
-    font-weight: bold;
     color: var(--pst-color-primary);
-    font-size: 15px;
+}
+
+.navbar-brand .logo__title {
+    font-size: 2rem;
+    white-space: normal;
+    text-align: center;
+    font-style: italic;
+    color: var(--pst-color-muted);
+    font-weight: 500;
+    font-family: var(--pst-font-family-heading);
 }
