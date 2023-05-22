@@ -15,5 +15,5 @@ A python package to search for planetary transits in light curves containing cor
 :maxdepth: 2
 
 markdown/getstarted
-markdown/reference
+markdown/API
 ```

@@ -13,7 +13,7 @@ from nuance.utils import interp_split_times
 @dataclass
 class SearchData:
     """
-    An object that holds the results of a search.
+    An object that holds the results of the transit search.
     """
 
     # linear search
@@ -52,6 +52,13 @@ class SearchData:
 
     @property
     def fold_ll(self):
+        """
+        Returns a function that folds the likelihoods of all periods and t0s into a single period-folded likelihood.
+
+        Returns:
+            function: A function that takes a period and returns the folded likelihoods.
+        """
+
         folds = self.folds
 
         def _fold(p):
@@ -70,6 +77,12 @@ class SearchData:
 
     @property
     def best(self):
+        """
+        Returns the best-fit parameters for the search object.
+
+        Returns:
+            tuple: A tuple containing the best-fit t0, D, and period (if available).
+        """
         assert (
             self.ll is not None and self.Q_params is not None and self.Q_snr is not None
         ), "No search performed"
@@ -84,22 +97,62 @@ class SearchData:
 
     @property
     def shape(self):
+        """
+        Returns the shape of the likelihood array.
+
+        Returns:
+            tuple: A tuple containing the number of t0s and Ds in the search objects.
+        """
         return len(self.t0s), len(self.Ds)
 
     def show_ll(self, **kwargs):
+        """
+        Plots the likelihood array.
+
+        Args:
+            **kwargs: Additional keyword arguments to pass to `plt.imshow`.
+        """
         assert self.ll is not None, "No search performed"
         extent = np.min(self.t0s), np.max(self.t0s), np.min(self.Ds), np.max(self.Ds)
         plt.imshow(self.ll.T, aspect="auto", origin="lower", extent=extent, **kwargs)
 
     def asdict(self):
+        """
+        Returns a dictionary representation of the search object.
+
+        Returns:
+            dict: A dictionary containing the search object parameters.
+        """
         return asdict(self)
 
     def save(self, filename):
+        """
+        Saves the search to a file.
+
+        Args:
+            filename (str): The name of the file to save the search object to.
+        """
+
         pickle.dump(self.asdict(), open(filename, "wb"))
 
     def copy(self):
+        """
+        Returns a deep copy of the search object.
+
+        Returns:
+            Search: A deep copy of the search object.
+        """
         return deepcopy(self)
 
     @classmethod
     def load(cls, filename):
+        """
+        Loads a search object from a file.
+
+        Args:
+            filename (str): The name of the file to load the search object from.
+
+        Returns:
+            Search: The loaded search object.
+        """
         return cls(**pickle.load(open(filename, "rb")))

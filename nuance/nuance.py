@@ -206,6 +206,23 @@ class Nuance:
         return mean, signal, noise
 
     def mu(self, mask=None):
+        """
+        Computes the mean model of the GP.
+
+        Parameters
+        ----------
+        mask : np.ndarray, optional
+            A boolean mask to apply to the data, by default None.
+
+        Returns
+        -------
+        np.ndarray
+            The mean model of the GP.
+
+        Example
+        -------
+        >>> mu = model.mu()
+        """
         if mask is None:
             mask = mask = np.ones_like(self.time).astype(bool)
 
@@ -321,6 +338,24 @@ class Nuance:
         return w / dw
 
     def gp_optimization(self, build_gp, mask=None):
+        """
+        Optimize the Gaussian Process (GP) model using the given build_gp function.
+
+        Parameters
+        ----------
+        build_gp : function
+            A function that returns a GP object.
+        mask : array-like, optional
+            A boolean array to mask the data, by default None.
+
+        Returns
+        -------
+        tuple
+            A tuple containing three functions:
+            - optimize: a function that optimizes the GP model.
+            - mu: a function that returns the mean of the GP model.
+            - nll: a function that returns the negative log-likelihood of the GP model.
+        """
         if mask is None:
             mask = mask = np.ones_like(self.time).astype(bool)
 
@@ -480,13 +515,33 @@ class Nuance:
         return ~mask
 
     def save(self, filename):
+        """Save the current state of the object to a file.
+
+        Parameters
+        ----------
+        filename : str
+            The name of the file to save the object to.
+        """
         pickle.dump(asdict(self), open(filename, "wb"))
 
     def copy(self):
+        """Return a deep copy of the object."""
         return deepcopy(self)
 
     @classmethod
     def load(cls, filename):
+        """Load an object from a file.
+
+        Parameters
+        ----------
+        filename : str
+            The name of the file to load the object from.
+
+        Returns
+        -------
+        Nuance
+            The loaded object.
+        """
         return cls(**pickle.load(open(filename, "rb")))
 
 
