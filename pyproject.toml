@@ -13,12 +13,17 @@ jax = "*"
 jaxlib = "*"
 jaxopt = "*"
 numpy = "*"
-matplotlib= "*"
+matplotlib = "*"
 scipy = "*"
+multiprocess = "*"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "*"
 black = "*"
+
+[tool.poetry.group.test.dependencies]
+pytest = "*"
+astropy = "*"
 
 [tool.poetry.group.docs.dependencies]
 sphinx = "*"
