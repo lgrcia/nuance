@@ -132,7 +132,7 @@ class Nuance:
         vars = ll.copy()
         depths = ll.copy()
 
-        _progress = lambda x: tqdm(x, unit_scale=CPU_counts) if progress else x
+        _progress = lambda x: tqdm(x) if progress else x
 
         f = jax.pmap(eval_transit, in_axes=(0, None))
         g = jax.vmap(f, in_axes=(None, 0))

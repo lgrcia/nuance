@@ -113,7 +113,7 @@ def simulated(t0=0.2, D=0.05, depth=0.02, P=0.7, t=None, kernel=None, error=0.00
     return (t, flux, error), X, gp
 
 
-def plot_search(nu, search):
+def plot_search(nu, search, bins=7 / 60 / 24):
     """Plot result of a the periodic search
 
     Parameters
