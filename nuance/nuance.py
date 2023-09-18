@@ -41,6 +41,7 @@ class Nuance:
     """Mean of the GP"""
     search_data: SearchData = None
     """Search data instance"""
+    c: float = 12
 
     def __post_init__(self):
         assert (self.error is None) ^ (
@@ -118,7 +119,7 @@ class Nuance:
 
         @jax.jit
         def eval_transit(t0, D):
-            m = utils.single_transit(self.time, t0, D)
+            m = utils.single_transit(self.time, t0, D, c=self.c)
             _ll, w, v = self.eval_m(m)
             return w[n], v[n, n], _ll
 
@@ -239,7 +240,7 @@ class Nuance:
 
         return _mu()
 
-    def models(self, t0: float, D: float, P: float = None):
+    def models(self, t0: float, D: float, P: float = None, c=None):
         """Return the models corresponding the transit of epoch `t0` and duration `D`(and period `P` for a periodic transit)
 
         Parameters
@@ -273,10 +274,12 @@ class Nuance:
             linear, astro, noise = nu.models(0.2, 0.05, 1.3)
 
         """
-        m = utils.transit(self.time, t0, D, 1, P=P)
+        if c is None:
+            c = self.c
+        m = utils.transit(self.time, t0, D, 1, P=P, c=c)
         return self._models(m)
 
-    def solve(self, t0: float, D: float, P: float = None):
+    def solve(self, t0: float, D: float, P: float = None, c: float = None):
         """solve linear model (design matrix `Nuance.X`)
 
         Parameters
@@ -293,7 +296,9 @@ class Nuance:
         list
             (w, v): linear coefficients and their covariance matrix
         """
-        m = utils.transit(self.time, t0, D, 1, P=P)
+        if c is None:
+            c = self.c
+        m = utils.transit(self.time, t0, D, 1, P=P, c=c)
         _, w, v = self.eval_m(m)
         return w, v
 
