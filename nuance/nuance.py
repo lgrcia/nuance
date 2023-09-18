@@ -13,6 +13,8 @@ from tinygp import GaussianProcess, kernels
 from tqdm import tqdm
 from tqdm.autonotebook import tqdm
 
+from functools import partial
+
 from . import CPU_counts, utils
 from .search_data import SearchData
 
@@ -157,7 +159,7 @@ class Nuance:
             t0s=t0s, Ds=Ds, ll=ll, z=depths, vz=vars, ll0=self.ll0
         )
 
-    def periodic_search(self, periods: np.ndarray, progress=True):
+    def periodic_search(self, periods: np.ndarray, progress=True, dphi=0.01):
         """Performs the periodic search
 
         Parameters
@@ -181,7 +183,7 @@ class Nuance:
             return tqdm(x, **kwargs) if progress else x
 
         global SEARCH
-        SEARCH = self.search_data.fold_ll
+        SEARCH = partial(self.search_data.fold_ll, dphi=dphi)
 
         with mp.Pool() as pool:
             for p, (Ti, j, P) in enumerate(
