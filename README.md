@@ -19,13 +19,13 @@
   </p>
 </p>
 
-*nuance* uses linear models and gaussian processes (using the [JAX](https://github.com/google/jax)-based [tinygp](https://github.com/dfm/tinygp)) to simultaneously **search for planetary transits while modeling correlated noises** (e.g. stellar variability) in a tractable way. *nuance* is 
+*nuance* uses linear models and gaussian processes (using the [JAX](https://github.com/google/jax)-based [tinygp](https://github.com/dfm/tinygp)) to simultaneously **search for planetary transits while modeling correlated noises** (e.g. stellar variability) in a tractable way.
 
 When to use *nuance*?
 - To detect single or periodic transits
 - When correlated noises are present in the data (e.g. stellar variability or instrumental systematics)
-- For space-based or sparse ground-based observations (features in development)
-- To effectively find transits in light curves from multiple instruments (features in development)
+- For space-based or sparse ground-based observations
+- To effectively find transits in light curves from multiple instruments
 
 Documentation at [nuance.readthedocs.io](https://nuance.readthedocs.io)
 
@@ -40,9 +40,9 @@ import numpy as np
 nu = Nuance(time, flux, gp=gp, X=X)
 
 # linear search
-t0s = time.copy()
-Ds = np.linspace(0.01, 0.2, 15)
-nu.linear_search(t0s, Ds)
+epochs = time.copy()
+durations = np.linspace(0.01, 0.2, 15)
+nu.linear_search(epochs, durations)
 
 # periodic search
 periods = np.linspace(0.3, 5, 2000)
