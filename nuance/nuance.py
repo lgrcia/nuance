@@ -13,6 +13,8 @@ from tinygp import GaussianProcess, kernels
 from tqdm import tqdm
 from tqdm.autonotebook import tqdm
 
+from functools import partial
+
 from . import CPU_counts, utils
 from .search_data import SearchData
 
@@ -41,6 +43,7 @@ class Nuance:
     """Mean of the GP"""
     search_data: SearchData = None
     """Search data instance"""
+    c: float = 12
 
     def __post_init__(self):
         assert (self.error is None) ^ (
@@ -118,7 +121,7 @@ class Nuance:
 
         @jax.jit
         def eval_transit(t0, D):
-            m = utils.single_transit(self.time, t0, D)
+            m = utils.single_transit(self.time, t0, D, c=self.c)
             _ll, w, v = self.eval_m(m)
             return w[n], v[n, n], _ll
 
@@ -156,7 +159,7 @@ class Nuance:
             t0s=t0s, Ds=Ds, ll=ll, z=depths, vz=vars, ll0=self.ll0
         )
 
-    def periodic_search(self, periods: np.ndarray, progress=True):
+    def periodic_search(self, periods: np.ndarray, progress=True, dphi=0.01):
         """Performs the periodic search
 
         Parameters
@@ -165,6 +168,11 @@ class Nuance:
             array of periods to search
         progress : bool, optional
             wether to show progress bar, by default True
+        dphi: float, optional
+            the relative step size of the phase grid. For each period, all likelihood quantities along time are
+            interpolated along a phase grid of resolution `min(1/200, dphi/P))`. The smaller dphi
+            the finer the grid, and the more resolved the transit epoch and period (the the more computationally expensive the
+            periodic search). The default is 0.01.
 
         Returns
         -------
@@ -180,7 +188,7 @@ class Nuance:
             return tqdm(x, **kwargs) if progress else x
 
         global SEARCH
-        SEARCH = self.search_data.fold_ll
+        SEARCH = partial(self.search_data.fold_ll, dphi=dphi)
 
         with mp.Pool() as pool:
             for p, (Ti, j, P) in enumerate(
@@ -239,7 +247,7 @@ class Nuance:
 
         return _mu()
 
-    def models(self, t0: float, D: float, P: float = None):
+    def models(self, t0: float, D: float, P: float = None, c=None):
         """Return the models corresponding the transit of epoch `t0` and duration `D`(and period `P` for a periodic transit)
 
         Parameters
@@ -273,10 +281,12 @@ class Nuance:
             linear, astro, noise = nu.models(0.2, 0.05, 1.3)
 
         """
-        m = utils.transit(self.time, t0, D, 1, P=P)
+        if c is None:
+            c = self.c
+        m = utils.transit(self.time, t0, D, 1, P=P, c=c)
         return self._models(m)
 
-    def solve(self, t0: float, D: float, P: float = None):
+    def solve(self, t0: float, D: float, P: float = None, c: float = None):
         """solve linear model (design matrix `Nuance.X`)
 
         Parameters
@@ -293,7 +303,9 @@ class Nuance:
         list
             (w, v): linear coefficients and their covariance matrix
         """
-        m = utils.transit(self.time, t0, D, 1, P=P)
+        if c is None:
+            c = self.c
+        m = utils.transit(self.time, t0, D, 1, P=P, c=c)
         _, w, v = self.eval_m(m)
         return w, v
 

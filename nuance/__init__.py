@@ -9,3 +9,4 @@ config.update("jax_enable_x64", True)
 
 from nuance.nuance import Nuance
 from nuance.search_data import SearchData
+from nuance.combined import CombinedNuance

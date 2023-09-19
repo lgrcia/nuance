@@ -44,8 +44,8 @@ class SearchData:
 
             return folds_ll, folds_z, folds_vz
 
-        def _folds(p):
-            pt0s = interp_split_times(self.t0s, p)
+        def _folds(p, dphi=0.01):
+            pt0s = interp_split_times(self.t0s, p, dphi=dphi)
             return pt0s, interpolate_all(pt0s)
 
         return _folds
@@ -61,8 +61,8 @@ class SearchData:
 
         folds = self.folds
 
-        def _fold(p):
-            pt0s, (lls, zs, vzs) = folds(p)
+        def _fold(p, dphi=0.01):
+            pt0s, (lls, zs, vzs) = folds(p, dphi=dphi)
             P1 = np.sum(lls, 0)
             vZ = 1 / np.sum(1 / vzs, 0)
             Z = vZ * np.sum(zs / vzs, 0)
