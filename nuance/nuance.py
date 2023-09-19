@@ -168,6 +168,11 @@ class Nuance:
             array of periods to search
         progress : bool, optional
             wether to show progress bar, by default True
+        dphi: float, optional
+            the relative step size of the phase grid. For each period, all likelihood quantities along time are
+            interpolated along a phase grid of resolution `min(1/200, dphi/P))`. The smaller dphi
+            the finer the grid, and the more resolved the transit epoch and period (the the more computationally expensive the
+            periodic search). The default is 0.01.
 
         Returns
         -------

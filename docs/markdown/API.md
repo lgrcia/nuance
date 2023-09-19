@@ -9,5 +9,6 @@
 
    ~nuance.nuance.Nuance
    ~nuance.search_data.SearchData
+   ~nuance.combined.CombinedNuance
 
 ```

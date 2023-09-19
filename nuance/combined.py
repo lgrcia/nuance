@@ -19,9 +19,16 @@ def solve_triangular(*gps_y):
 
 @dataclass
 class CombinedNuance:
+    """
+    An object for nuanced transit search in multiple datasets.
+    """
+
     datasets: List[Nuance]
+    """Nuance instance of each dataset, where the linear search must be already ran."""
     search_data: SearchData = None
+    """SearchData instance of the combined dataset."""
     c: float = 12.0
+    """The c parameter of the transit model."""
 
     def __post_init__(self):
         for d in self.datasets:
@@ -65,24 +72,73 @@ class CombinedNuance:
         return [periodic_transit(d.search_data.t0s, t0, D, P) for d in self.datasets]
 
     def solve(self, t0, D, P, c=None):
+        """Solve the combined model for a given set of parameters.
+
+        Parameters
+        ----------
+        t0 : float
+            epoch, same unit as time
+        D : float
+            duration, same unit as time
+        P : float, optional
+            period, same unit as time, by default None
+        c : float, optional
+            c parameter of the transit model, by default None
+
+        Returns
+        -------
+        list
+            (w, v): linear coefficients and their covariance matrix
+        """
         if c is None:
             c = self.c
         w, v = self.eval_m(self.periodic_transits(t0, D, P, c))
         return w, v
 
     def snr(self, t0, D, P, c=None):
+        """SNR of transit linearly solved for epoch `t0` and duration `D` (and period `P` for a periodic transit)
+
+        Parameters
+        ----------
+        t0 : float
+            epoch, same unit as time
+        D : float
+            duration, same unit as time
+        P : float, optional
+            period, same unit as time, by default None
+        c : float, optional
+            c parameter of the transit model, by default None
+
+        Returns
+        -------
+        float
+            transit snr
+        """
         if c is None:
             c = self.c
         w, v = self.solve(t0, D, P, c)
         return w[-1] / jnp.sqrt(v[-1, -1])
 
-    def models(self, t0, D, P, c=None):
-        if c is None:
-            c = self.c
-        w, v = self.solve(t0, D, P, c)
-        return [d.gp.predict(w[:-1], v[:-1, :-1]) for d in self.datasets]
-
     def periodic_search(self, periods, dphi=0.01):
+        """Performs the periodic search
+
+        Parameters
+        ----------
+        periods : np.ndarray
+            array of periods to search
+        progress : bool, optional
+            wether to show progress bar, by default True
+        dphi: float, optional
+            the relative step size of the phase grid. For each period, all likelihood quantities along time are
+            interpolated along a phase grid of resolution `min(1/200, dphi/P))`. The smaller dphi
+            the finer the grid, and the more resolved the transit epoch and period (the the more computationally expensive the
+            periodic search). The default is 0.01.
+
+        Returns
+        -------
+        :py:class:`nuance.SearchData`
+            search results
+        """
         n = len(periods)
         fold_functions = [d.search_data.fold_ll for d in self.datasets]
         Ds = self.search_data.Ds
