@@ -29,7 +29,6 @@ def periodic_transit(t, t0, D, P=1, c=12):
 
 
 def interp_split_times(time, p, dphi=0.01):
-    dt = np.median(np.diff(time))
     tmax, tmin = np.max(time), np.min(time)
     total = tmax - tmin
     # since for very small periods we might fold on few points only, it's better to impose
