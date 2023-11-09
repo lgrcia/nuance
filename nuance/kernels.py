@@ -14,9 +14,9 @@ def Rotation(sigma, period, Q0, dQ, f):
     return kernel
 
 
-def rotation(period, error=None, long_scale=0.5):
+def rotation(period=None, error=None, long_scale=0.5):
     params = {
-        "log_period": jnp.log(2 * period),
+        "log_period": jnp.log(period) if period is not None else jnp.log(1.0),
         "log_Q": jnp.log(100),
         "log_sigma": jnp.log(1e-1),
         "log_dQ": jnp.log(100),

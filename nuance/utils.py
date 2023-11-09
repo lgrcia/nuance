@@ -28,14 +28,16 @@ def periodic_transit(t, t0, D, P=1, c=12):
     return -0.5 * np.tanh(c * (_t + 1 / 2)) + 0.5 * np.tanh(c * (_t - 1 / 2))
 
 
-def interp_split_times(time, p):
+def interp_split_times(time, p, dphi=0.01):
     dt = np.median(np.diff(time))
     tmax, tmin = np.max(time), np.min(time)
     total = tmax - tmin
     # since for very small periods we might fold on few points only, it's better to impose
     # at least 200 phases, to compare period folds more fairly
-    phase = np.arange(0, 1, np.min([dt, dt / p]))
+    phase = np.arange(0, 1, np.min([1 / 200, dphi / p]))
     n = np.arange(np.ceil(total / p))  # number of 'folds'
+    # this line is important so that different time-series have the same phase 0
+    tmin -= tmin % p
     pt0s = np.array([tmin + phase * p + j * p for j in n])  # corresponding t0s
     has_time = np.any([np.abs(time - _t0) < p / 2 for _t0 in pt0s.mean(1)], 1)
     pt0s = pt0s[has_time]
@@ -95,12 +97,15 @@ def Ps(lls, zs, vzs):
     return P1, P2
 
 
-def simulated(t0=0.2, D=0.05, depth=0.02, P=0.7, t=None, kernel=None, error=0.001):
+def simulated(
+    t0=0.2, D=0.05, depth=0.02, P=0.7, t=None, kernel=None, error=0.001, w=None
+):
     if t is None:
         t = np.arange(0, 4, 2 / 60 / 24)
 
     X = np.vander(t, N=4, increasing=True).T
-    w = [1.0, 5e-4, -2e-4, -5e-4]
+    if w is None:
+        w = [1.0, 5e-4, -2e-4, -5e-4]
 
     true_transit = depth * periodic_transit(t, t0, D, P=P)
 
@@ -142,7 +147,8 @@ def plot_search(nu, search, bins=7 / 60 / 24):
     phi = phase(nu.time, t0, P)
     detrended = nu.flux - noise - mean
     plt.plot(phi, detrended, ".", c=".8")
-    plt.plot(*binn(phi, detrended, 50), ".", c="k")
+    bx, by, be = binn_time(phi, detrended, bins=bins)
+    plt.errorbar(bx, by, yerr=be, fmt=".", c="k")
     plt.xlim(*(np.array([-1, 1]) * 10 * D))
     plt.ylim(*(np.array([-1, 1]) * float(np.abs(astro.min())) * 4))
 
@@ -150,3 +156,31 @@ def plot_search(nu, search, bins=7 / 60 / 24):
 def clean_periods(periods, period, tol=0.02):
     close = periods / period
     return periods[np.abs(close - np.rint(close)) > tol]
+
+
+def index_binning(x, size):
+    if isinstance(size, float):
+        bins = np.arange(np.min(x), np.max(x), size)
+    else:
+        x = np.arange(0, len(x))
+        bins = np.arange(0.0, len(x), size)
+
+    d = np.digitize(x, bins)
+    n = np.max(d) + 2
+    indexes = []
+
+    for i in range(0, n):
+        s = np.where(d == i)
+        if len(s[0]) > 0:
+            s = s[0]
+            indexes.append(s)
+
+    return indexes
+
+
+def binn_time(time, flux, bins=7 / 24 / 60):
+    indexes = index_binning(time, bins)
+    binned_time = np.array([np.mean(time[i]) for i in indexes])
+    binned_flux = np.array([np.mean(flux[i]) for i in indexes])
+    binned_error = np.array([np.std(flux[i]) / np.sqrt(len(i)) for i in indexes])
+    return binned_time, binned_flux, binned_error
