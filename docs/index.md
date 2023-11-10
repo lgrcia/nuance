@@ -24,7 +24,14 @@ notebooks/single.ipynb
 notebooks/periodic.ipynb
 notebooks/multi.ipynb
 notebooks/combined.ipynb
+```
 
+
+```{toctree}
+:maxdepth: 1
+:caption: Tutorials
+
+notebooks/tutorials/tess_search.ipynb
 ```
 
 ```{toctree}

@@ -92,3 +92,5 @@ myst_enable_extensions = [
 
 autodoc_typehints = "signature"
 autoclass_content = "both"
+
+nb_execution_excludepatterns = ["_build/*", "notebooks/tutorials/*"]
