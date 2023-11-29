@@ -97,24 +97,24 @@ def Ps(lls, zs, vzs):
 
 
 def simulated(
-    t0=0.2, D=0.05, depth=0.02, P=0.7, t=None, kernel=None, error=0.001, w=None
+    t0=0.2, D=0.05, depth=0.02, P=0.7, time=None, kernel=None, error=0.001, w=None
 ):
-    if t is None:
-        t = np.arange(0, 4, 2 / 60 / 24)
+    if time is None:
+        time = np.arange(0, 4, 2 / 60 / 24)
 
-    X = np.vander(t, N=4, increasing=True).T
+    X = np.vander(time, N=4, increasing=True).T
     if w is None:
         w = [1.0, 5e-4, -2e-4, -5e-4]
 
-    true_transit = depth * periodic_transit(t, t0, D, P=P)
+    true_transit = depth * periodic_transit(time, t0, D, P=P)
 
     if kernel is None:
         kernel = tinygp.kernels.quasisep.SHO(np.pi / (6 * D), 45.0, depth)
 
-    gp = tinygp.GaussianProcess(kernel, t, diag=error**2, mean=0.0)
+    gp = tinygp.GaussianProcess(kernel, time, diag=error**2, mean=0.0)
     flux = gp.sample(jax.random.PRNGKey(40)) + true_transit + w @ X
 
-    return (t, flux, error), X, gp
+    return (time, flux, error), X, gp
 
 
 def plot_search(nu, search, bins=7 / 60 / 24):

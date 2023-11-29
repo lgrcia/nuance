@@ -1,6 +1,6 @@
 import numpy as np
 
-from nuance import Nuance, utils
+from nuance import CombinedNuance, Nuance, utils
 
 true_P = 0.7
 (time, flux, error), X, gp = utils.simulated(P=true_P)
@@ -31,7 +31,7 @@ def test_mask_t0s_equal_time():
     nu.linear_search(t0s, Ds)
 
     # mask
-    nu.mask(0.1, 0.01, 2.0)
+    nu.mask_transit(0.1, 0.01, 2.0)
 
 
 def test_mask_t0s_not_equal_time():
@@ -43,13 +43,10 @@ def test_mask_t0s_not_equal_time():
     nu.linear_search(t0s, Ds)
 
     # mask
-    nu.mask(0.1, 0.01, 2.0)
+    nu.mask_transit(0.1, 0.01, 2.0)
 
 
 def test_example():
-    from nuance import Nuance, utils
-    import numpy as np
-
     true = dict(t0=0.2, D=0.05, depth=0.02, P=0.7)
     (time, flux, error), X, gp = utils.simulated(**true)
 
@@ -68,3 +65,30 @@ def test_example():
 
     np.testing.assert_allclose(P, true["P"], atol=1e-2)
     np.testing.assert_allclose(D, true["D"], atol=1e-2)
+
+
+def test_combined():
+    true = dict(t0=0.2, D=0.05, depth=0.0005, P=0.7)
+    exposure = 2 / 60 / 24
+
+    durations = np.linspace(0.01, 0.2, 15)
+
+    np.random.seed(42)
+    (time, flux, _), X, gp = utils.simulated(**true, time=np.arange(0, 4, exposure))
+    nu1 = Nuance(time, flux, gp=gp, X=X)
+    nu1.linear_search(time.copy(), durations)
+
+    (time, flux, _), X, gp = utils.simulated(**true, time=np.arange(8, 12, exposure))
+    nu2 = Nuance(time, flux, gp=gp, X=X)
+    nu2.linear_search(time.copy(), durations)
+
+    nu = CombinedNuance([nu1, nu2])
+
+    # periodic search
+    periods = np.linspace(0.3, 5, 2000)
+    search = nu.periodic_search(periods)
+
+    _, D, P = search.best
+
+    np.testing.assert_allclose(P, true["P"], atol=1e-2)
+    np.testing.assert_allclose(D, true["D"], atol=2e-2)

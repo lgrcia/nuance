@@ -1,13 +1,15 @@
 from dataclasses import dataclass
 from typing import List
-from nuance.nuance import Nuance
-from nuance.search_data import SearchData
+
+import jax.numpy as jnp
 import numpy as np
 from scipy.linalg import block_diag
-from nuance.utils import periodic_transit
 from tqdm.autonotebook import tqdm
-import jax.numpy as jnp
+
 from nuance import utils
+from nuance.nuance import Nuance
+from nuance.search_data import SearchData
+from nuance.utils import periodic_transit
 
 
 def solve_triangular(*gps_y):
@@ -133,7 +135,7 @@ class CombinedNuance:
         if c is None:
             c = self.c
         w, v = self.solve(t0, D, P, c)
-        return w[-1] / jnp.sqrt(v[-1, -1])
+        return np.max([0, w[-1] / jnp.sqrt(v[-1, -1])])
 
     def periodic_search(self, periods, dphi=0.01):
         """Performs the periodic search
@@ -156,6 +158,9 @@ class CombinedNuance:
             search results
         """
         n = len(periods)
+        assert all(
+            [d.search_data is not None for d in self.datasets]
+        ), "linear search missing on at least one dataset"
         fold_functions = [d.search_data.fold_ll for d in self.datasets]
         Ds = self.search_data.Ds
 
@@ -227,7 +232,10 @@ class CombinedNuance:
 
         return np.hstack(means), np.hstack(signals), np.hstack(noises)
 
-    def mask(self):
-        new_self = self.__class__(datasets=[d.mask() for d in self.datasets], c=self.c)
-        new_self.datasets = [d.mask() for d in self.datasets]
+    def mask_transit(self, t0: float, D: float, P: float):
+        new_self = self.__class__(
+            datasets=[d.mask_transit(t0, D, P) for d in self.datasets], c=self.c
+        )
         new_self._fill_search_data()
+        new_self._compute_L()
+        return new_self

@@ -2,21 +2,20 @@ import multiprocessing as mp
 import pickle
 from copy import deepcopy
 from dataclasses import asdict, dataclass
-from multiprocessing import set_start_method
+from functools import partial
 
 import jax
 import jax.numpy as jnp
 import jaxopt
 import multiprocess as mp
 import numpy as np
+from scipy.ndimage import minimum_filter1d
 from tinygp import GaussianProcess, kernels
 from tqdm import tqdm
 from tqdm.autonotebook import tqdm
 
-from functools import partial
-
-from . import utils
-from .search_data import SearchData
+from nuance import utils
+from nuance.search_data import SearchData
 
 # set_start_method("spawn")
 
@@ -215,7 +214,7 @@ class Nuance:
 
         return mean, signal, noise
 
-    def mu(self, mask=None):
+    def mu(self, time=None):
         """
         Computes the mean model of the GP.
 
@@ -233,23 +232,20 @@ class Nuance:
         -------
         >>> mu = model.mu()
         """
-        if mask is None:
-            mask = mask = np.ones_like(self.time).astype(bool)
-
-        masked_y = self.flux[mask]
-        masked_X = self.X[:, mask]
+        if time is None:
+            time = self.time
 
         @jax.jit
         def _mu():
             gp = self.gp
             _, w, _ = self.eval_m(np.zeros_like(self.time))
             w = w[0:-1]
-            cond_gp = gp.condition(masked_y - w @ masked_X, self.time).gp
+            cond_gp = gp.condition(self.flux - w @ self.X, time).gp
             return cond_gp.loc + w @ self.X
 
         return _mu()
 
-    def models(self, t0: float, D: float, P: float = None, c=None):
+    def models(self, t0: float = None, D: float = None, P: float = None, c=None):
         """Return the models corresponding the transit of epoch `t0` and duration `D`(and period `P` for a periodic transit)
 
         Parameters
@@ -285,7 +281,10 @@ class Nuance:
         """
         if c is None:
             c = self.c
-        m = utils.transit(self.time, t0, D, 1, P=P, c=c)
+        if t0 is not None:
+            m = utils.transit(self.time, t0, D, 1, P=P, c=c)
+        else:
+            m = np.zeros_like(self.time)
         return self._models(m)
 
     def solve(self, t0: float, D: float, P: float = None, c: float = None):
@@ -349,7 +348,7 @@ class Nuance:
             transit snr
         """
         w, dw = self.depth(t0, D, P=P)
-        return w / dw
+        return np.max([0, w / dw])
 
     def gp_optimization(self, build_gp, mask=None):
         """
@@ -371,7 +370,7 @@ class Nuance:
             - nll: a function that returns the negative log-likelihood of the GP model.
         """
         if mask is None:
-            mask = mask = np.ones_like(self.time).astype(bool)
+            mask = np.ones_like(self.time).astype(bool)
 
         masked_x = self.time[mask]
         masked_y = self.flux[mask]
@@ -417,7 +416,7 @@ class Nuance:
 
         return optimize, mu, nll
 
-    def mask(self, t0: float, D: float, P: float):
+    def mask_transit(self, t0: float, D: float, P: float):
         """Return a `Nuance` object where the transit of epoch `t0` and duration `D` and period `P` is masked.
 
         Parameters
@@ -475,59 +474,6 @@ class Nuance:
         nu.search_data = search_data
         return nu
 
-    # The all thing needs to be rewritten
-    def flares_mask(self, window=30, sigma=4, iterations=3):
-        """Return a mask where flares are masked.
-
-        Parameters
-        ----------
-        window : int, optional
-            The sliding mask window (typical number of points of a flare duration),
-            by default 30
-        sigma : int, optional
-            Flare sigma-clipping factor, by default 4
-        iterations : int, optional
-            Number of iterations, by default 3
-
-        Returns
-        -------
-        np.ndarray
-            Flare mask
-        """
-        raise NotImplementedError
-        mask = np.ones_like(self.time).astype(bool)
-        window = 30
-
-        def build_gp(params, x):
-            return GaussianProcess(
-                self.kernel, x, diag=np.mean(self.error) ** 2, mean=0.0
-            )
-
-        _, mu, _ = self.gp_optimization(build_gp)
-
-        for _ in range(iterations):
-            m = mu(None)
-            r = self.flux - m
-            mask_up = r < np.std(r[mask]) * sigma
-
-            # mask around flares
-            ups = np.flatnonzero(~mask_up)
-            if len(ups) > 0:
-                mask[
-                    np.hstack(
-                        [
-                            np.arange(
-                                max(u - window, 0), min(u + window, len(self.time))
-                            )
-                            for u in ups
-                        ]
-                    )
-                ] = False
-
-            _, mu, _ = self.gp_optimization(build_gp, mask=mask)
-
-        return ~mask
-
     def save(self, filename):
         """Save the current state of the object to a file.
 
@@ -557,6 +503,34 @@ class Nuance:
             The loaded object.
         """
         return cls(**pickle.load(open(filename, "rb")))
+
+    def mask_flares(self, build_gp=None, init=None, window=20, sigma=5, iterations=3):
+        # for now
+        assert build_gp is not None and init is not None
+        mask = np.ones_like(self.time).astype(bool)
+
+        if build_gp is not None:
+            optimize, mu, nll = self.gp_optimization(build_gp)
+            opt = init.copy()
+
+        for _ in range(iterations):
+            residuals = self.flux - mu(opt)
+            mask[residuals > sigma * np.std(residuals[mask])] = False
+            mask = np.roll(minimum_filter1d(mask, window), shift=window // 3)
+
+            if build_gp is not None:
+                optimize, mu, _ = self.gp_optimization(build_gp, mask)
+                opt = optimize(init)
+
+        new_nu = Nuance(
+            time=self.time[mask],
+            flux=self.flux[mask],
+            X=self.X[:, mask],
+            gp=build_gp(opt, self.time[mask]),
+            compute=True,
+        )
+
+        return new_nu
 
 
 def _search(p):
