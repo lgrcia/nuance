@@ -14,10 +14,12 @@ from tinygp import GaussianProcess, kernels
 from tqdm import tqdm
 from tqdm.autonotebook import tqdm
 
-from . import CPU_counts, utils
-from .search_data import SearchData
+from nuance import utils
+from nuance.search_data import SearchData
 
 # set_start_method("spawn")
+
+CPU_counts = jax.device_count()
 
 
 @dataclass
