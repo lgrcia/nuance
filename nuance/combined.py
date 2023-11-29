@@ -1,12 +1,15 @@
 from dataclasses import dataclass
 from typing import List
-from nuance.nuance import Nuance
-from nuance.search_data import SearchData
+
+import jax.numpy as jnp
 import numpy as np
 from scipy.linalg import block_diag
-from nuance.utils import periodic_transit
 from tqdm.autonotebook import tqdm
-import jax.numpy as jnp
+
+from nuance import utils
+from nuance.nuance import Nuance
+from nuance.search_data import SearchData
+from nuance.utils import periodic_transit
 
 
 def solve_triangular(*gps_y):
@@ -117,7 +120,7 @@ class CombinedNuance:
         if c is None:
             c = self.c
         w, v = self.solve(t0, D, P, c)
-        return w[-1] / jnp.sqrt(v[-1, -1])
+        return np.max([0, w[-1] / jnp.sqrt(v[-1, -1])])
 
     def periodic_search(self, periods, dphi=0.01):
         """Performs the periodic search
@@ -167,3 +170,54 @@ class CombinedNuance:
         new_search_data.Q_params = params
 
         return new_search_data
+
+    def models(self, t0, D, P, c=None):
+        """Solve the combined model for a given set of parameters.
+
+        Parameters
+        ----------
+        t0 : float
+            epoch, same unit as time
+        D : float
+            duration, same unit as time
+        P : float, optional
+            period, same unit as time, by default None
+        c : float, optional
+            c parameter of the transit model, by default None
+
+        Returns
+        -------
+        list
+            (w, v): linear coefficients and their covariance matrix
+        """
+        if c is None:
+            c = self.c
+        m = self.periodic_transits(t0, D, P, c)
+        w, _ = self.eval_m(m)
+
+        # means
+        w_idxs = [0, *np.cumsum([d.X.shape[0] for d in self.datasets])]
+        means = []
+        for i in range(len(w_idxs) - 1):
+            means.append(np.array(w[w_idxs[i] : w_idxs[i + 1]]) @ self.datasets[i].X)
+
+        # signals
+        signals = [
+            utils.transit(d.time, t0, D, P=P, c=c) * w[-1] for d in self.datasets
+        ]
+
+        # noises
+        noises = []
+        for i, d in enumerate(self.datasets):
+            _, cond = d.gp.condition(d.flux - means[i] - signals[i])
+            noises.append(cond.mean)
+
+        return np.hstack(means), np.hstack(signals), np.hstack(noises)
+
+    def mask_transit(self, t0: float, D: float, P: float):
+        new_self = self.__class__(
+            datasets=[d.mask_transit(t0, D, P) for d in self.datasets], c=self.c
+        )
+        new_self._fill_search_data()
+        new_self._compute_L()
+        return new_self

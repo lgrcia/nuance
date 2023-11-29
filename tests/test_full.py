@@ -31,7 +31,7 @@ def test_mask_t0s_equal_time():
     nu.linear_search(t0s, Ds)
 
     # mask
-    nu.mask(0.1, 0.01, 2.0)
+    nu.mask_transit(0.1, 0.01, 2.0)
 
 
 def test_mask_t0s_not_equal_time():
@@ -43,7 +43,7 @@ def test_mask_t0s_not_equal_time():
     nu.linear_search(t0s, Ds)
 
     # mask
-    nu.mask(0.1, 0.01, 2.0)
+    nu.mask_transit(0.1, 0.01, 2.0)
 
 
 def test_example():
