@@ -15,10 +15,12 @@ from tqdm.autonotebook import tqdm
 
 from functools import partial
 
-from . import CPU_counts, utils
+from . import utils
 from .search_data import SearchData
 
 # set_start_method("spawn")
+
+CPU_counts = jax.device_count()
 
 
 @dataclass
