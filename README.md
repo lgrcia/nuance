@@ -10,12 +10,8 @@
   A Python package to detect exoplanetary transits <br>in the presence of stellar variability and correlated noises
   <br>
   <p align="center">
-    <a href="./LICENSE">
-      <img src="https://img.shields.io/badge/license-MIT-lightgray.svg?style=flat" alt="license"/>
-    </a>
-      <a href="https://nuance.readthedocs.io">
-      <img src="https://img.shields.io/badge/ReadThe-Doc-blue.svg?style=flat" alt="license"/> 
-    </a>
+    <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-lightgray.svg?style=flat" alt="license"/></a>
+    <a href="https://nuance.readthedocs.io"><img src="https://img.shields.io/badge/ReadThe-Doc-blue.svg?style=flat" alt="license"/></a>
   </p>
 </p>
 
