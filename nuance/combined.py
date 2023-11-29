@@ -54,6 +54,21 @@ class CombinedNuance:
         """Number of datasets"""
         return len(self.datasets)
 
+    @property
+    def time(self):
+        """Time array of the combined dataset"""
+        return np.hstack([d.time for d in self.datasets])
+
+    @property
+    def flux(self):
+        """Flux array of the combined dataset"""
+        return np.hstack([d.flux for d in self.datasets])
+
+    @property
+    def X(self):
+        """Design matrix of the combined dataset"""
+        return block_diag(*[d.X for d in self.datasets])
+
     def _compute_L(self):
         Liy = solve_triangular(*[(d.gp, d.flux) for d in self.datasets])
         LiX = solve_triangular(*[(d.gp, d.X.T) for d in self.datasets])
