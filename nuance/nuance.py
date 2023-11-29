@@ -2,18 +2,17 @@ import multiprocessing as mp
 import pickle
 from copy import deepcopy
 from dataclasses import asdict, dataclass
-from multiprocessing import set_start_method
+from functools import partial
 
 import jax
 import jax.numpy as jnp
 import jaxopt
 import multiprocess as mp
 import numpy as np
+from scipy.ndimage import minimum_filter1d
 from tinygp import GaussianProcess, kernels
 from tqdm import tqdm
 from tqdm.autonotebook import tqdm
-from scipy.ndimage import minimum_filter1d
-from functools import partial
 
 from . import CPU_counts, utils
 from .search_data import SearchData
@@ -213,7 +212,7 @@ class Nuance:
 
         return mean, signal, noise
 
-    def mu(self, time):
+    def mu(self, time=None):
         """
         Computes the mean model of the GP.
 
@@ -240,7 +239,7 @@ class Nuance:
             _, w, _ = self.eval_m(np.zeros_like(self.time))
             w = w[0:-1]
             cond_gp = gp.condition(self.flux - w @ self.X, time).gp
-            return cond_gp.loc
+            return cond_gp.loc + w @ self.X
 
         return _mu()
 
