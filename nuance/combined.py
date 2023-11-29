@@ -158,6 +158,9 @@ class CombinedNuance:
             search results
         """
         n = len(periods)
+        assert all(
+            [d.search_data is not None for d in self.datasets]
+        ), "linear search missing on at least one dataset"
         fold_functions = [d.search_data.fold_ll for d in self.datasets]
         Ds = self.search_data.Ds
 

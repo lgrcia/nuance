@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "nuance"
-version = "0.2.0"
-description = "Transit detection in correlated noises"
+version = "0.3.0"
+description = "Transit signals detection among correlated noises"
 authors = ["Lionel Garcia"]
 license = "MIT"
 readme = "README.md"
