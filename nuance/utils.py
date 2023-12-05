@@ -7,9 +7,9 @@ from jax import numpy as jnp
 jax.config.update("jax_enable_x64", True)
 
 
-def transit(t, t0=None, D=None, d=1.0, c=12, P=None):
+def transit(t, t0, D, P=None, d=1.0, c=12):
     if P is None:
-        return d * single_transit(t, t0=t0, D=D, c=c).__array__()
+        return d * single_transit(t, t0=t0, D=D, c=c)
     else:
         return d * periodic_transit(t, t0, D, P=P, c=c)
 
@@ -23,9 +23,10 @@ def single_transit(t, t0=None, D=None, c=12):
     return -0.5 * (jnp.tanh(a - b + b0) + jnp.tanh(a + b - b0))
 
 
+@jax.jit
 def periodic_transit(t, t0, D, P=1, c=12):
-    _t = P * np.sin(np.pi * (t - t0) / P) / (np.pi * D)
-    return -0.5 * np.tanh(c * (_t + 1 / 2)) + 0.5 * np.tanh(c * (_t - 1 / 2))
+    _t = P * jnp.sin(jnp.pi * (t - t0) / P) / (jnp.pi * D)
+    return -0.5 * jnp.tanh(c * (_t + 1 / 2)) + 0.5 * jnp.tanh(c * (_t - 1 / 2))
 
 
 def interp_split_times(time, p, dphi=0.01):
