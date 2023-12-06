@@ -172,6 +172,35 @@ class Nuance:
 
         return optimize, mu, nll
 
+    def mu(self, time=None):
+        """
+        Computes the mean model of the GP.
+
+        Parameters
+        ----------
+        mask : np.ndarray, optional
+            A boolean mask to apply to the data, by default None.
+        Returns
+        -------
+        np.ndarray
+            The mean model of the GP.
+        Example
+        -------
+        >>> mu = model.mu()
+        """
+        if time is None:
+            time = self.time
+
+        @jax.jit
+        def _mu():
+            gp = self.gp
+            _, w, _ = self.eval_m(np.zeros_like(self.time))
+            w = w[0:-1]
+            cond_gp = gp.condition(self.flux - w @ self.X, time).gp
+            return cond_gp.loc + w @ self.X
+
+        return _mu()
+
     def _models(self, m):
         _, w, _ = self.eval_m(m)
         mean = w[0:-1] @ self.X
