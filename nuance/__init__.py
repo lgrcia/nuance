@@ -1,12 +1,9 @@
-import os
-from multiprocessing import cpu_count
-
-CPU_counts = cpu_count()
-os.environ["XLA_FLAGS"] = f"--xla_force_host_platform_device_count={CPU_counts}"
+import jax
 from jax.config import config
 
+DEVICES_COUNT = jax.device_count()
 config.update("jax_enable_x64", True)
 
+from nuance.combined import CombinedNuance
 from nuance.nuance import Nuance
 from nuance.search_data import SearchData
-from nuance.combined import CombinedNuance

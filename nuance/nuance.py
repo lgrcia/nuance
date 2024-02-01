@@ -14,12 +14,8 @@ from tinygp import GaussianProcess, kernels
 from tqdm import tqdm
 from tqdm.autonotebook import tqdm
 
-from nuance import utils
+from nuance import DEVICES_COUNT, utils
 from nuance.search_data import SearchData
-
-# set_start_method("spawn")
-
-CPU_counts = jax.device_count()
 
 
 @dataclass
@@ -344,7 +340,7 @@ class Nuance:
             _ll, w, v = self.eval_m(m)
             return w[n], v[n, n], _ll
 
-        chunk_size = CPU_counts
+        chunk_size = DEVICES_COUNT
         chunks = int(np.ceil(len(t0s) / chunk_size))
         padded_t0s = np.pad(t0s, pad_width=[0, chunks * chunk_size - len(t0s)])
         splitted_t0s = np.array(np.array_split(padded_t0s, chunks))
@@ -360,9 +356,9 @@ class Nuance:
         g = jax.vmap(f, in_axes=(None, 0))
         for i, t0 in enumerate(_progress(splitted_t0s)):
             _depths, _vars, _ll = g(t0, Ds)
-            depths[i * CPU_counts : (i + 1) * CPU_counts, :] = _depths.T
-            vars[i * CPU_counts : (i + 1) * CPU_counts, :] = _vars.T
-            ll[i * CPU_counts : (i + 1) * CPU_counts, :] = _ll.T
+            depths[i * DEVICES_COUNT : (i + 1) * DEVICES_COUNT, :] = _depths.T
+            vars[i * DEVICES_COUNT : (i + 1) * DEVICES_COUNT, :] = _vars.T
+            ll[i * DEVICES_COUNT : (i + 1) * DEVICES_COUNT, :] = _ll.T
 
         depths = np.array(depths[0 : len(t0s), :])
         vars = np.array(vars[0 : len(t0s), :])
