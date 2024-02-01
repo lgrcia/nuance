@@ -14,7 +14,7 @@ from tinygp import GaussianProcess, kernels
 from tqdm import tqdm
 from tqdm.autonotebook import tqdm
 
-from nuance import DEVICES_COUNT, utils
+from nuance import DEVICES_COUNT, core, utils
 from nuance.search_data import SearchData
 
 
@@ -41,11 +41,11 @@ class Nuance:
     search_data: SearchData = None
     """Search data instance"""
     model: callable = None
-    """Model function"""
+    """Model function with signature `model(time, t0, D, P=None)`"""
 
     def __post_init__(self):
         if self.model is None:
-            self.model = partial(utils.transit, c=12, d=1)
+            self.model = partial(core.transit_protopapas, c=12, d=1)
 
         assert (self.error is None) ^ (
             self.gp is None
@@ -62,26 +62,9 @@ class Nuance:
             )
 
         if self.compute:
-            self._compute_L()
+            self.eval_model = jax.jit(core.eval_model(self.flux, self.X, self.gp))
 
         self.search_data = None
-
-    def _compute_L(self):
-        Liy = self.gp.solver.solve_triangular(self.flux)
-        LiX = self.gp.solver.solve_triangular(self.X.T)
-
-        @jax.jit
-        def eval_m(m):
-            Xm = jnp.vstack([self.X, m])
-            Lim = self.gp.solver.solve_triangular(m)
-            LiXm = jnp.hstack([LiX, Lim[:, None]])
-            LiXmT = LiXm.T
-            LimX2 = LiXmT @ LiXm
-            w = jnp.linalg.lstsq(LimX2, LiXmT @ Liy)[0]
-            v = jnp.linalg.inv(LimX2)
-            return self.gp.log_probability(self.flux - w @ Xm), w, v
-
-        self.eval_m = eval_m
 
     @property
     def ll0(self) -> float:
@@ -91,14 +74,18 @@ class Nuance:
         -------
         float
         """
-        return self.eval_m(np.zeros_like(self.time))[0].__array__()
+        return self.eval_model(np.zeros_like(self.time))[0].__array__()
 
     def _models(self, m):
-        _, w, _ = self.eval_m(m)
+        _, w, _ = self.eval_model(m)
         mean = w[0:-1] @ self.X
         signal = m * w[-1]
-        _, cond = self.gp.condition(self.flux - mean - signal)
-        noise = cond.mean
+
+        @jax.jit
+        def gp_mean():
+            return self.gp.condition(self.flux - mean - signal).gp.mean
+
+        noise = gp_mean()
 
         return mean, signal, noise
 
@@ -190,23 +177,14 @@ class Nuance:
         @jax.jit
         def _mu():
             gp = self.gp
-            _, w, _ = self.eval_m(np.zeros_like(self.time))
+            _, w, _ = self.eval_model(np.zeros_like(self.time))
             w = w[0:-1]
             cond_gp = gp.condition(self.flux - w @ self.X, time).gp
             return cond_gp.loc + w @ self.X
 
         return _mu()
 
-    def _models(self, m):
-        _, w, _ = self.eval_m(m)
-        mean = w[0:-1] @ self.X
-        signal = m * w[-1]
-        _, cond = self.gp.condition(self.flux - mean - signal)
-        noise = cond.mean
-
-        return mean, signal, noise
-
-    def models(self, t0: float = None, D: float = None, P: float = None):
+    def models(self, t0: float = None, D: float = None, P: float = 1e15):
         """Return the models corresponding to epoch `t0` and duration `D`(and period `P` for a periodic model)
 
         Parameters
@@ -264,7 +242,7 @@ class Nuance:
             (w, v): linear coefficients and their covariance matrix
         """
         m = self.model(self.time, t0, D, P)
-        _, w, v = self.eval_m(m)
+        _, w, v = self.eval_model(m)
         return w, v
 
     def depth(self, t0: float, D: float, P: float = None):
@@ -337,7 +315,7 @@ class Nuance:
         @jax.jit
         def eval_model(t0, D):
             m = self.model(self.time, t0, D)
-            _ll, w, v = self.eval_m(m)
+            _ll, w, v = self.eval_model(m)
             return w[n], v[n, n], _ll
 
         chunk_size = DEVICES_COUNT
@@ -365,7 +343,7 @@ class Nuance:
         ll = np.array(ll[0 : len(t0s), :])
 
         if positive:
-            ll0 = self.eval_m(np.zeros_like(self.time))[0]
+            ll0 = self.eval_model(np.zeros_like(self.time))[0]
             ll[depths < 0] = ll0
 
         vars[~np.isfinite(vars)] = 1e25

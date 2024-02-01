@@ -6,10 +6,9 @@ import numpy as np
 from scipy.linalg import block_diag
 from tqdm.autonotebook import tqdm
 
-from nuance import utils
+from nuance import core, utils
 from nuance.nuance import Nuance
 from nuance.search_data import SearchData
-from nuance.utils import periodic_transit
 
 
 def solve_triangular(*gps_y):
@@ -36,6 +35,11 @@ class CombinedNuance:
     def __post_init__(self):
         self._fill_search_data()
         self._compute_L()
+
+    @property
+    def model(self):
+        """The model"""
+        return self.datasets[0].model
 
     def _fill_search_data(self):
         if all([d.search_data is not None for d in self.datasets]):
@@ -87,7 +91,7 @@ class CombinedNuance:
     def periodic_transits(self, t0, D, P, c=None):
         if c is None:
             c = self.c
-        return [periodic_transit(d.search_data.t0s, t0, D, P) for d in self.datasets]
+        return [self.model(d.search_data.t0s, t0, D, P) for d in self.datasets]
 
     def solve(self, t0, D, P, c=None):
         """Solve the combined model for a given set of parameters.
@@ -189,7 +193,7 @@ class CombinedNuance:
 
         return new_search_data
 
-    def models(self, t0, D, P, c=None):
+    def models(self, t0, D, P):
         """Solve the combined model for a given set of parameters.
 
         Parameters
@@ -210,7 +214,7 @@ class CombinedNuance:
         """
         if c is None:
             c = self.c
-        m = self.periodic_transits(t0, D, P, c)
+        m = self.model(t0, D, P)
         w, _ = self.eval_m(m)
 
         # means
@@ -220,9 +224,7 @@ class CombinedNuance:
             means.append(np.array(w[w_idxs[i] : w_idxs[i + 1]]) @ self.datasets[i].X)
 
         # signals
-        signals = [
-            utils.transit(d.time, t0, D, P=P, c=c) * w[-1] for d in self.datasets
-        ]
+        signals = [self.model(d.time, t0, D, P=P) * w[-1] for d in self.datasets]
 
         # noises
         noises = []
@@ -232,9 +234,9 @@ class CombinedNuance:
 
         return np.hstack(means), np.hstack(signals), np.hstack(noises)
 
-    def mask_transit(self, t0: float, D: float, P: float):
+    def mask_model(self, t0: float, D: float, P: float):
         new_self = self.__class__(
-            datasets=[d.mask_transit(t0, D, P) for d in self.datasets], c=self.c
+            datasets=[d.mask_model(t0, D, P) for d in self.datasets], c=self.c
         )
         new_self._fill_search_data()
         new_self._compute_L()

@@ -2,31 +2,8 @@ import jax
 import matplotlib.pyplot as plt
 import numpy as np
 import tinygp
-from jax import numpy as jnp
 
-jax.config.update("jax_enable_x64", True)
-
-
-def transit(t, t0, D, P=None, d=1.0, c=12):
-    if P is None:
-        return d * single_transit(t, t0=t0, D=D, c=c)
-    else:
-        return d * periodic_transit(t, t0, D, P=P, c=c)
-
-
-@jax.jit
-def single_transit(t, t0=None, D=None, c=12):
-    a = 0.5 * c
-    b = c * t / D
-    b0 = c * t0 / D
-
-    return -0.5 * (jnp.tanh(a - b + b0) + jnp.tanh(a + b - b0))
-
-
-@jax.jit
-def periodic_transit(t, t0, D, P=1, c=12):
-    _t = P * jnp.sin(jnp.pi * (t - t0) / P) / (jnp.pi * D)
-    return -0.5 * jnp.tanh(c * (_t + 1 / 2)) + 0.5 * jnp.tanh(c * (_t - 1 / 2))
+from nuance import core
 
 
 def interp_split_times(time, p, dphi=0.01):
@@ -107,7 +84,7 @@ def simulated(
     if w is None:
         w = [1.0, 5e-4, -2e-4, -5e-4]
 
-    true_transit = depth * periodic_transit(time, t0, D, P=P)
+    true_transit = depth * core.transit_protopapas(time, t0, D, P=P)
 
     if kernel is None:
         kernel = tinygp.kernels.quasisep.SHO(np.pi / (6 * D), 45.0, depth)
