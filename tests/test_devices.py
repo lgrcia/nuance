@@ -1,9 +1,9 @@
 import pytest
 
 
-@pytest.skip("Figure out later")
 @pytest.mark.parametrize("cpu_count", [None, 1, 2, 4])
 def test_cpu(cpu_count):
+    pytest.skip("Figure out later")
     import os
 
     import jax
