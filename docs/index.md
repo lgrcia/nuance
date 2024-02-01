@@ -32,6 +32,8 @@ notebooks/combined.ipynb
 :caption: Tutorials
 
 notebooks/tutorials/tess_search.ipynb
+notebooks/tutorials/exocomet.ipynb
+
 ```
 
 ```{toctree}
