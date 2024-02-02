@@ -306,7 +306,11 @@ class Nuance:
             wether to force depth to be positive, by default True
         progress : bool, optional
             wether to show progress bar, by default True
-
+        backend : str, optional
+            backend to use, by default "cpu" (options: "cpu", "gpu").
+            For more details, see :py:func:`nuance.core.map_function`
+        batch_size : int, optional
+            batch size for parallel evaluation, by default None
         Returns
         -------
         None
@@ -314,16 +318,16 @@ class Nuance:
         assert backend in ["cpu", "gpu"], "backend must be 'cpu' or 'gpu'"
 
         if backend == "cpu":
-            _eval_t0s_Ds = core.pmap_cpus
+            eval_t0_Ds_function = core.pmap_cpus
             if batch_size is None:
                 batch_size = DEVICES_COUNT
 
         elif backend == "gpu":
-            _eval_t0s_Ds = core.vmap_gpu
+            eval_t0_Ds_function = core.vmap_gpu
             if batch_size is None:
                 batch_size = 1000
 
-        eval_t0s_Ds = _eval_t0s_Ds(self.eval_model, self.model, self.time)
+        eval_t0s_Ds = eval_t0_Ds_function(self.eval_model, self.model, self.time)
 
         batches_n = int(np.ceil(len(t0s) / batch_size))
         padded_t0s = np.pad(t0s, pad_width=[0, batches_n * batch_size - len(t0s)])
@@ -334,7 +338,7 @@ class Nuance:
         vars = ll.copy()
         depths = ll.copy()
 
-        _progress = lambda x: tqdm(x) if progress else x
+        _progress = lambda x: tqdm(x, unit_scale=batch_size) if progress else x
 
         for i, t0 in enumerate(_progress(batched_t0s)):
             _depths, _vars, _ll = eval_t0s_Ds(t0, Ds)
