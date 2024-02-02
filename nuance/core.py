@@ -28,4 +28,4 @@ def transit_protopapas(t, t0, D, P=1e15, c=12, d=1.0):
 
 @jax.jit
 def transit_box(time, t0, D, P=1e15):
-    return -(jnp.abs((time - t0) % P) < D / 2).astype(float)
+    return -((jnp.abs(time - t0) % P) < D / 2).astype(float)
