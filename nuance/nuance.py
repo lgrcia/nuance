@@ -291,7 +291,7 @@ class Nuance:
         Ds: np.ndarray,
         positive: bool = True,
         progress: bool = True,
-        backend: str = "cpu",
+        backend: str = None,
         batch_size: int = None,
     ):
         """Performs the linear search. Saves the linear search `Nuance.search_data` as a :py:class:`nuance.SearchData` object
@@ -307,15 +307,19 @@ class Nuance:
         progress : bool, optional
             wether to show progress bar, by default True
         backend : str, optional
-            backend to use, by default "cpu" (options: "cpu", "gpu").
-            For more details, see :py:func:`nuance.core.map_function`
+            backend to use, by default jax.default_backend() (options: "cpu", "gpu").
+            This affect the linear search function jax mapping strategy. For more details, see
+            :py:func:`nuance.core.map_function`
         batch_size : int, optional
             batch size for parallel evaluation, by default None
         Returns
         -------
         None
         """
-        assert backend in ["cpu", "gpu"], "backend must be 'cpu' or 'gpu'"
+        assert backend in [None, "cpu", "gpu"], "backend must be 'cpu' or 'gpu'"
+
+        if backend is None:
+            backend = jax.default_backend()
 
         if backend == "cpu":
             eval_t0_Ds_function = core.pmap_cpus
