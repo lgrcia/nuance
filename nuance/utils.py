@@ -4,6 +4,7 @@ import numpy as np
 import tinygp
 
 from nuance import core
+from nuance.core import transit_protopapas
 
 
 def interp_split_times(time, p, dphi=0.01):
@@ -161,3 +162,71 @@ def binn_time(time, flux, bins=7 / 24 / 60):
     binned_flux = np.array([np.mean(flux[i]) for i in indexes])
     binned_error = np.array([np.std(flux[i]) / np.sqrt(len(i)) for i in indexes])
     return binned_time, binned_flux, binned_error
+
+
+def simulated_ground_based(n=500, N=4):
+    true = {
+        "t0": 0.3,
+        "D": 38 / 60 / 24,
+        "depth": 0.005,
+        "P": 0.65,
+    }
+    idxs = np.arange(1, N) * n
+    times = [np.linspace(0 + i, 0.5 + i, n) for i in range(N)]
+    time = np.concatenate(times)
+    error = 1e-3
+    kernel = tinygp.kernels.quasisep.SHO(np.pi / true["D"] / 3, 1, true["depth"] / 2)
+    variability_gp = tinygp.GaussianProcess(kernel, time, diag=0)
+    jax_key = jax.random.PRNGKey(0)
+    variability = variability_gp.sample(jax_key)
+    variabilities = [
+        np.random.normal(0, error) + v for v in np.split(variability, idxs)
+    ]
+
+    airmasses = [0.2 * (t - t.min()) ** 2 for t in times]
+    bkgs = [
+        tinygp.GaussianProcess(
+            tinygp.kernels.quasisep.SHO(20, 1, 0.005), t, diag=(1e-4) ** 2
+        ).sample(jax.random.PRNGKey(i))
+        for i, t in enumerate(times)
+    ]
+    fwhms = [
+        tinygp.GaussianProcess(
+            tinygp.kernels.quasisep.SHO(45, 1, 0.005), t, diag=(5e-4) ** 2
+        ).sample(jax.random.PRNGKey(i))
+        for i, t in enumerate(times)
+    ]
+
+    transits = np.split(
+        true["depth"] * transit_protopapas(time, 0.3, true["D"], true["P"]), idxs
+    )
+
+    systematics = [
+        0.2 * np.random.normal(0, 0.9, 3) @ np.vstack([airmasses[i], bkgs[i], fwhms[i]])
+        for i in range(N)
+    ]
+
+    fluxes = [systematics[i] + variabilities[i] + transits[i] + 1.0 for i in range(N)]
+
+    fluxes = [f - np.median(f) + 1.0 for f in fluxes]
+
+    observations = [
+        {
+            "time": times[i],
+            "flux": fluxes[i],
+            "error": np.ones_like(times[i]) * error,
+            "airmass": airmasses[i],
+            "bkg": bkgs[i],
+            "fwhm": fwhms[i],
+        }
+        for i in range(N)
+    ]
+
+    signals = {
+        "transits": transits,
+        "variabilities": variabilities,
+        "systematics": systematics,
+        "transit_params": true,
+    }
+
+    return observations, signals
