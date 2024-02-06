@@ -1,4 +1,9 @@
 import numpy as np
+import os
+import jax
+
+jax.config.update("jax_enable_x64", True)
+os.environ["XLA_FLAGS"] = f"--xla_force_host_platform_device_count={os.cpu_count()}"
 
 from nuance import CombinedNuance, Nuance, utils
 

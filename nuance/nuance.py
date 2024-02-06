@@ -45,7 +45,7 @@ class Nuance:
 
     def __post_init__(self):
         if self.model is None:
-            self.model = partial(core.transit_protopapas, c=12, d=1)
+            self.model = partial(core.transit_protopapas, c=12)
 
         assert (self.error is None) ^ (
             self.gp is None
@@ -291,6 +291,8 @@ class Nuance:
         Ds: np.ndarray,
         positive: bool = True,
         progress: bool = True,
+        backend: str = None,
+        batch_size: int = None,
     ):
         """Performs the linear search. Saves the linear search `Nuance.search_data` as a :py:class:`nuance.SearchData` object
 
@@ -304,39 +306,49 @@ class Nuance:
             wether to force depth to be positive, by default True
         progress : bool, optional
             wether to show progress bar, by default True
-
+        backend : str, optional
+            backend to use, by default jax.default_backend() (options: "cpu", "gpu").
+            This affect the linear search function jax mapping strategy. For more details, see
+            :py:func:`nuance.core.map_function`
+        batch_size : int, optional
+            batch size for parallel evaluation, by default None
         Returns
         -------
         None
         """
+        assert backend in [None, "cpu", "gpu"], "backend must be 'cpu' or 'gpu'"
 
-        n = len(self.X)
+        if backend is None:
+            backend = jax.default_backend()
 
-        @jax.jit
-        def eval_model(t0, D):
-            m = self.model(self.time, t0, D)
-            _ll, w, v = self.eval_model(m)
-            return w[n], v[n, n], _ll
+        if backend == "cpu":
+            eval_t0_Ds_function = core.pmap_cpus
+            if batch_size is None:
+                batch_size = DEVICES_COUNT
 
-        chunk_size = DEVICES_COUNT
-        chunks = int(np.ceil(len(t0s) / chunk_size))
-        padded_t0s = np.pad(t0s, pad_width=[0, chunks * chunk_size - len(t0s)])
-        splitted_t0s = np.array(np.array_split(padded_t0s, chunks))
+        elif backend == "gpu":
+            eval_t0_Ds_function = core.vmap_gpu
+            if batch_size is None:
+                batch_size = 1000
+
+        eval_t0s_Ds = eval_t0_Ds_function(self.eval_model, self.model, self.time)
+
+        batches_n = int(np.ceil(len(t0s) / batch_size))
+        padded_t0s = np.pad(t0s, pad_width=[0, batches_n * batch_size - len(t0s)])
+        batched_t0s = np.array(np.array_split(padded_t0s, batches_n))
 
         ll = np.zeros((len(padded_t0s), len(Ds)))
         depths = ll.copy()
         vars = ll.copy()
         depths = ll.copy()
 
-        _progress = lambda x: tqdm(x) if progress else x
+        _progress = lambda x: (tqdm(x) if progress else x)
 
-        f = jax.pmap(eval_model, in_axes=(0, None))
-        g = jax.vmap(f, in_axes=(None, 0))
-        for i, t0 in enumerate(_progress(splitted_t0s)):
-            _depths, _vars, _ll = g(t0, Ds)
-            depths[i * DEVICES_COUNT : (i + 1) * DEVICES_COUNT, :] = _depths.T
-            vars[i * DEVICES_COUNT : (i + 1) * DEVICES_COUNT, :] = _vars.T
-            ll[i * DEVICES_COUNT : (i + 1) * DEVICES_COUNT, :] = _ll.T
+        for i, t0 in enumerate(_progress(batched_t0s)):
+            _depths, _vars, _ll = eval_t0s_Ds(t0, Ds)
+            depths[i * batch_size : (i + 1) * batch_size, :] = _depths.T
+            vars[i * batch_size : (i + 1) * batch_size, :] = _vars.T
+            ll[i * batch_size : (i + 1) * batch_size, :] = _ll.T
 
         depths = np.array(depths[0 : len(t0s), :])
         vars = np.array(vars[0 : len(t0s), :])
