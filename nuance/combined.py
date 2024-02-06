@@ -36,6 +36,9 @@ class CombinedNuance:
         self._fill_search_data()
         self._compute_L()
 
+    def __getitem__(self, i):
+        return self.datasets[i]
+
     @property
     def model(self):
         """The model"""
@@ -192,7 +195,7 @@ class CombinedNuance:
 
         return new_search_data
 
-    def models(self, t0, D, P):
+    def models(self, t0, D, P, split=False):
         """Solve the combined model for a given set of parameters.
 
         Parameters
@@ -203,16 +206,14 @@ class CombinedNuance:
             duration, same unit as time
         P : float, optional
             period, same unit as time, by default None
-        c : float, optional
-            c parameter of the transit model, by default None
 
         Returns
         -------
         list
             (w, v): linear coefficients and their covariance matrix
         """
-        m = self.model(t0, D, P)
-        w, _ = self.eval_model(m)
+        ms = [d.model(d.time, t0, D, P) for d in self.datasets]
+        w, _ = self.eval_model(ms)
 
         # means
         w_idxs = [0, *np.cumsum([d.X.shape[0] for d in self.datasets])]
@@ -228,8 +229,10 @@ class CombinedNuance:
         for i, d in enumerate(self.datasets):
             _, cond = d.gp.condition(d.flux - means[i] - signals[i])
             noises.append(cond.mean)
-
-        return np.hstack(means), np.hstack(signals), np.hstack(noises)
+        if split:
+            return means, signals, noises
+        else:
+            return np.hstack(means), np.hstack(signals), np.hstack(noises)
 
     def mask_model(self, t0: float, D: float, P: float):
         new_self = self.__class__(

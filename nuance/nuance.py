@@ -342,7 +342,7 @@ class Nuance:
         vars = ll.copy()
         depths = ll.copy()
 
-        _progress = lambda x: tqdm(x, unit_scale=batch_size) if progress else x
+        _progress = lambda x: (tqdm(x) if progress else x)
 
         for i, t0 in enumerate(_progress(batched_t0s)):
             _depths, _vars, _ll = eval_t0s_Ds(t0, Ds)

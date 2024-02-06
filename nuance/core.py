@@ -25,7 +25,7 @@ def eval_model(flux, X, gp):
 @jax.jit
 def transit_protopapas(t, t0, D, P=1e15, c=12):
     _t = P * jnp.sin(jnp.pi * (t - t0) / P) / (jnp.pi * D)
-    return 0.5 * jnp.tanh(c * (_t + 1 / 2)) + 0.5 * jnp.tanh(c * (_t - 1 / 2))
+    return -0.5 * jnp.tanh(c * (_t + 1 / 2)) + 0.5 * jnp.tanh(c * (_t - 1 / 2))
 
 
 @jax.jit
