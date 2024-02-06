@@ -33,7 +33,7 @@ notebooks/combined.ipynb
 
 notebooks/tutorials/tess_search.ipynb
 notebooks/tutorials/exocomet.ipynb
-
+notebooks/tutorials/ground_based.ipynb
 ```
 
 ```{toctree}
