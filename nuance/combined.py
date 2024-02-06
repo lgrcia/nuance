@@ -44,7 +44,14 @@ class CombinedNuance:
     def _fill_search_data(self):
         if all([d.search_data is not None for d in self.datasets]):
             t0s = np.hstack([d.search_data.t0s for d in self.datasets])
-            Ds = np.hstack([d.search_data.Ds for d in self.datasets])
+            all_Ds = [n.search_data.Ds for n in self.datasets]
+            all_equal = (
+                np.diff(np.vstack(all_Ds).reshape(len(all_Ds), -1), axis=0) == 0
+            ).all()
+            assert (
+                all_equal
+            ), "All datasets linear searches must have same duration grids"
+            Ds = self.datasets[0].search_data.Ds
             ll = np.vstack([d.search_data.ll for d in self.datasets])
             z = np.vstack([d.search_data.z for d in self.datasets])
             vz = np.vstack([d.search_data.vz for d in self.datasets])
@@ -73,7 +80,7 @@ class CombinedNuance:
         Liy = solve_triangular(*[(d.gp, d.flux) for d in self.datasets])
         LiX = solve_triangular(*[(d.gp, d.X.T) for d in self.datasets])
 
-        def eval_m(ms):
+        def eval_model(ms):
             Lim = solve_triangular(*[(d.gp, m) for d, m in zip(self.datasets, ms)])
             LiXm = jnp.hstack([LiX, Lim[:, None]])
             LiXmT = LiXm.T
@@ -82,18 +89,13 @@ class CombinedNuance:
             v = jnp.linalg.inv(LimX2)
             return w, v
 
-        self.eval_m = eval_m
+        self.eval_model = eval_model
 
     def linear_search(self, t0s, Ds, progress=True):
         for d in self.datasets:
             d.linear_search(t0s, Ds, progress=progress)
 
-    def periodic_transits(self, t0, D, P, c=None):
-        if c is None:
-            c = self.c
-        return [self.model(d.search_data.t0s, t0, D, P) for d in self.datasets]
-
-    def solve(self, t0, D, P, c=None):
+    def solve(self, t0, D, P):
         """Solve the combined model for a given set of parameters.
 
         Parameters
@@ -102,7 +104,7 @@ class CombinedNuance:
             epoch, same unit as time
         D : float
             duration, same unit as time
-        P : float, optional
+        P : float, optionale
             period, same unit as time, by default None
         c : float, optional
             c parameter of the transit model, by default None
@@ -112,12 +114,11 @@ class CombinedNuance:
         list
             (w, v): linear coefficients and their covariance matrix
         """
-        if c is None:
-            c = self.c
-        w, v = self.eval_m(self.periodic_transits(t0, D, P, c))
+        models = [self.model(d.search_data.t0s, t0, D, P) for d in self.datasets]
+        w, v = self.eval_model(models)
         return w, v
 
-    def snr(self, t0, D, P, c=None):
+    def snr(self, t0, D, P):
         """SNR of transit linearly solved for epoch `t0` and duration `D` (and period `P` for a periodic transit)
 
         Parameters
@@ -136,10 +137,8 @@ class CombinedNuance:
         float
             transit snr
         """
-        if c is None:
-            c = self.c
-        w, v = self.solve(t0, D, P, c)
-        return np.max([0, w[-1] / jnp.sqrt(v[-1, -1])])
+        w, v = self.solve(t0, D, P)
+        return jnp.max(jnp.array([0, w[-1] / jnp.sqrt(v[-1, -1])]))
 
     def periodic_search(self, periods, dphi=0.01):
         """Performs the periodic search
@@ -212,10 +211,8 @@ class CombinedNuance:
         list
             (w, v): linear coefficients and their covariance matrix
         """
-        if c is None:
-            c = self.c
         m = self.model(t0, D, P)
-        w, _ = self.eval_m(m)
+        w, _ = self.eval_model(m)
 
         # means
         w_idxs = [0, *np.cumsum([d.X.shape[0] for d in self.datasets])]

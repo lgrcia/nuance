@@ -45,7 +45,7 @@ class Nuance:
 
     def __post_init__(self):
         if self.model is None:
-            self.model = partial(core.transit_protopapas, c=12, d=1)
+            self.model = partial(core.transit_protopapas, c=12)
 
         assert (self.error is None) ^ (
             self.gp is None

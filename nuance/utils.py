@@ -16,7 +16,7 @@ def interp_split_times(time, p, dphi=0.01):
     # this line is important so that different time-series have the same phase 0
     tmin -= tmin % p
     pt0s = np.array([tmin + phase * p + j * p for j in n])  # corresponding t0s
-    has_time = np.any([np.abs(time - _t0) < p / 2 for _t0 in pt0s.mean(1)], 1)
+    has_time = np.any([np.abs(time - _t0) % p < p / 2 for _t0 in pt0s.mean(1)], 1)
     pt0s = pt0s[has_time]
 
     return pt0s
