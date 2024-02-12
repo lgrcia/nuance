@@ -1,17 +1,16 @@
----
-sd_hide_title: true
----
-
 # *nuance*
 
-```{image} _static/nuance.svg
-:height: 300px
+Efficient detection of planets transiting active stars
+
+---
+
+<div style="margin: 100px"></div>
+
+```{image} _static/illu.png
+:height: 200px
 :align: center
 ```
-
-```{warning}
-Documentation and code under development
-```
+<div style="margin: 100px"></div>
 
 A python package to search for planetary transits in light curves containing correlated noise (like instrumental systematics or stellar variability). Powered by [JAX](https://github.com/google/jax) and [tinygp](https://github.com/dfm/tinygp).
 
@@ -40,5 +39,6 @@ notebooks/tutorials/ground_based.ipynb
 :maxdepth: 1
 :caption: Reference
 
+markdown/how
 markdown/API
 ```

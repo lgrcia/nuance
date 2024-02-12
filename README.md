@@ -1,5 +1,3 @@
-> Work in progress ...
-
 # nuance
 
 <p align="center" style="margin-top:20px">

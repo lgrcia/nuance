@@ -42,7 +42,7 @@ templates_path = ["_templates"]
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = ["jupyter_execute"]
+exclude_patterns = ["_build/*"]
 
 
 # -- Options for HTML output -------------------------------------------------
@@ -64,8 +64,10 @@ import toml
 
 pyproject = toml.load("../pyproject.toml")
 version = pyproject["tool"]["poetry"]["version"]
-html_short_title = "nuance"
-html_title = f"{html_short_title}"
+# html_short_title = "nuance"
+# html_title = f"{html_short_title}"
+html_logo = "_static/logo.png"
+html_favicon = "_static/favicon.png"
 # -----
 
 source_suffix = {
@@ -79,7 +81,7 @@ root_doc = "index"
 html_theme_options = {
     "repository_url": "https://github.com/lgrcia/nuance",
     "use_repository_button": True,
-    "show_navbar_depth": 2,
+    # "show_navbar_depth": 2,
 }
 
 nb_render_image_options = {"align": "center"}
@@ -93,4 +95,8 @@ myst_enable_extensions = [
 autodoc_typehints = "signature"
 autoclass_content = "both"
 
-nb_execution_excludepatterns = ["_build/*", "notebooks/tutorials/*"]
+nb_execution_excludepatterns = [
+    "_build/*",
+    "notebooks/tutorials/*",
+    "notebooks/_*.ipynb",
+]
