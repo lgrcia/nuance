@@ -2,8 +2,8 @@
 
 Efficient detection of planets transiting active stars
 
-<p align="center" style="margin:20px">
-    <img src="docs/_static/illu.png" height="250">
+<p align="center" style="margin:50px">
+    <img src="docs/_static/illu.png" height="150">
 </p>
 
 <p align="center">
