@@ -1,19 +1,18 @@
 # nuance
 
-Efficient detection of planets transiting active stars
+<div  style="margin: 30px;">
+</div>
 
 <p align="center">
-    <img src="docs/_static/illu.png" height="200" style="margin:50px">
-</p>
-
-<p align="center">
-  A Python package to detect exoplanetary transits <br>in the presence of stellar variability and correlated noises
-  <br>
+  Efficient detection of planets transiting active stars
   <p align="center">
     <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-lightgray.svg?style=flat" alt="license"/></a>
     <a href="https://nuance.readthedocs.io"><img src="https://img.shields.io/badge/ReadThe-Doc-blue.svg?style=flat" alt="license"/></a>
   </p>
 </p>
+
+<div  style="margin: 30px;">
+</div>
 
 *nuance* uses linear models and gaussian processes (using the [JAX](https://github.com/google/jax)-based [tinygp](https://github.com/dfm/tinygp)) to simultaneously **search for planetary transits while modeling correlated noises** (e.g. stellar variability) in a tractable way.
 
