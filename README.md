@@ -1,7 +1,9 @@
 # nuance
 
-<p align="center" style="margin-top:20px">
-    <img src="docs/_static/nuance.svg" height="250">
+Efficient detection of planets transiting active stars
+
+<p align="center" style="margin:20px">
+    <img src="docs/_static/nuance.png" height="250">
 </p>
 
 <p align="center">
