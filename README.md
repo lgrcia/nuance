@@ -1,7 +1,7 @@
 # nuance
 
 <p align="center">
-    <img src="docs/_static/illu_readme.png" height="200" style="margin:50px">
+    <img src="docs/_static/illu_readme.png" height="350" style="margin:50px">
 </p>
 
 <p align="center">
