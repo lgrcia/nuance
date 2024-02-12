@@ -12,7 +12,6 @@ import numpy as np
 from scipy.ndimage import minimum_filter1d
 from tinygp import GaussianProcess, kernels
 from tqdm import tqdm
-from tqdm.autonotebook import tqdm
 
 from nuance import DEVICES_COUNT, core, utils
 from nuance.search_data import SearchData
@@ -47,6 +46,8 @@ class Nuance:
         if self.model is None:
             self.model = partial(core.transit_protopapas, c=12)
 
+        self.model = jax.jit(self.model)
+
         assert (self.error is None) ^ (
             self.gp is None
         ), "Either error or gp must be defined"
@@ -65,6 +66,19 @@ class Nuance:
             self.eval_model = jax.jit(core.eval_model(self.flux, self.X, self.gp))
 
         self.search_data = None
+
+    def __repr__(self):
+        noise = (
+            f"kernel={self.gp.kernel}"
+            if self.error is None
+            else f"error={self.error:.3e}"
+        )
+        return f"Nuance(N={len(self.time)}, M={self.X.shape[0]}, {noise}, searched={self.searched})"
+
+    @property
+    def searched(self):
+        """Whether the linear search has been performed"""
+        return self.search_data is not None
 
     @property
     def ll0(self) -> float:
@@ -161,15 +175,12 @@ class Nuance:
 
         Parameters
         ----------
-        mask : np.ndarray, optional
-            A boolean mask to apply to the data, by default None.
+        time : np.ndarray, optional
+            The time at which to compute the mean model, by default None (uses `self.time`).
         Returns
         -------
         np.ndarray
             The mean model of the GP.
-        Example
-        -------
-        >>> mu = model.mu()
         """
         if time is None:
             time = self.time
@@ -177,7 +188,7 @@ class Nuance:
         @jax.jit
         def _mu():
             gp = self.gp
-            _, w, _ = self.eval_model(np.zeros_like(self.time))
+            _, w, _ = self.eval_model(np.zeros_like(time))
             w = w[0:-1]
             cond_gp = gp.condition(self.flux - w @ self.X, time).gp
             return cond_gp.loc + w @ self.X
@@ -201,9 +212,9 @@ class Nuance:
         list np.ndarray
             a list of three np.ndarray:
 
-            - linear: linear model
-            - astro: signal being searched
-            - noise: noise model
+            - linear: linear model (using `X`)
+            - model: model being searched
+            - noise: noise model (using `GP`)
 
         Example
         -------
@@ -225,7 +236,7 @@ class Nuance:
         return self._models(m)
 
     def solve(self, t0: float, D: float, P: float = None):
-        """solve linear model (design matrix `Nuance.X`)
+        """solve linear model (suing `X`)
 
         Parameters
         ----------
@@ -308,7 +319,7 @@ class Nuance:
             wether to show progress bar, by default True
         backend : str, optional
             backend to use, by default jax.default_backend() (options: "cpu", "gpu").
-            This affect the linear search function jax mapping strategy. For more details, see
+            This affects the linear search function jax-mapping strategy. For more details, see
             :py:func:`nuance.core.map_function`
         batch_size : int, optional
             batch size for parallel evaluation, by default None
@@ -376,12 +387,12 @@ class Nuance:
         dphi: float, optional
             the relative step size of the phase grid. For each period, all likelihood quantities along time are
             interpolated along a phase grid of resolution `min(1/200, dphi/P))`. The smaller dphi
-            the finer the grid, and the more resolved the model epoch and period (the the more computationally expensive the
+            the finer the grid, and the more resolved the model epoch and period (but the more computationally expensive the
             periodic search). The default is 0.01.
 
         Returns
         -------
-        :py:class:`nuance.SearchData`
+        :py:class:`~nuance.SearchData`
             search results
         """
         new_search_data = self.search_data.copy()

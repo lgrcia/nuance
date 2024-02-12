@@ -16,22 +16,34 @@ class SearchData:
     An object that holds the results of the transit search.
     """
 
-    # linear search
+    # linear search grid
     t0s: np.ndarray
+    """Array of trial transit epochs."""
     Ds: np.ndarray
+    """Array of trial transit durations."""
+
+    # linear search results
     ll: Optional[np.ndarray] = None
+    """Single transit likelihoods."""
     z: Optional[np.ndarray] = None
+    """Single transit depths."""
     vz: Optional[np.ndarray] = None
+    """Single transit depth variance."""
     ll0: Optional[float] = None
+    """Zero-transit likelihood."""
 
     # periodic search, Q is periodogram
     periods: Optional[np.ndarray] = None
+    """Array of trial periods."""
     Q_snr: Optional[np.ndarray] = None
+    """Periodogram SNR."""
     Q_ll: Optional[np.ndarray] = None
+    """Periodic transit likelihoods."""
     Q_params: Optional[np.ndarray] = None
+    """Periodogram best-fit parameters."""
 
     @property
-    def folds(self):
+    def _folds(self):
         f_ll = interp2d(self.Ds, self.t0s, self.ll)
         f_z = interp2d(self.Ds, self.t0s, self.z)
         f_dz2 = interp2d(self.Ds, self.t0s, self.vz)
@@ -59,7 +71,7 @@ class SearchData:
             function: A function that takes a period and returns the folded likelihoods.
         """
 
-        folds = self.folds
+        folds = self._folds
 
         def _fold(p, dphi=0.01):
             pt0s, (lls, zs, vzs) = folds(p, dphi=dphi)

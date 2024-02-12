@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "nuance"
-version = "0.5.2"
+version = "0.5.3"
 description = "Transit signals detection among correlated noises"
 authors = ["Lionel Garcia"]
 license = "MIT"
@@ -31,7 +31,7 @@ sphinx = "*"
 docutils = "*"
 jupyterlab = "*"
 myst-parser = "*"
-sphinx-book-theme = "^1.0.0"
+sphinx-book-theme = "*"
 myst-nb = "*"
 sphinx-copybutton = "*"
 sphinx-design = "*"

@@ -1,19 +1,18 @@
----
-sd_hide_title: true
----
-
 # *nuance*
 
-```{image} _static/nuance.svg
-:height: 300px
+Efficient detection of planets transiting active stars
+
+---
+
+<div style="margin: 100px"></div>
+
+```{image} _static/illu.png
+:height: 200px
 :align: center
 ```
+<div style="margin: 100px"></div>
 
-```{warning}
-Documentation and code under development
-```
-
-A python package to search for planetary transits in light curves containing correlated noise (like instrumental systematics or stellar variability). Powered by [JAX](https://github.com/google/jax) and [tinygp](https://github.com/dfm/tinygp).
+*nuance* uses linear models and gaussian processes (using [JAX](https://github.com/google/jax)-based [tinygp](https://github.com/dfm/tinygp)) to simultaneously **search for planetary transits while modeling correlated noises** (e.g. stellar variability) in a tractable way.
 
 ```{toctree}
 :maxdepth: 1
@@ -40,5 +39,6 @@ notebooks/tutorials/ground_based.ipynb
 :maxdepth: 1
 :caption: Reference
 
+markdown/how
 markdown/API
 ```

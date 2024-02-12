@@ -4,9 +4,8 @@ from typing import List
 import jax.numpy as jnp
 import numpy as np
 from scipy.linalg import block_diag
-from tqdm.autonotebook import tqdm
+from tqdm import tqdm
 
-from nuance import core, utils
 from nuance.nuance import Nuance
 from nuance.search_data import SearchData
 
@@ -29,8 +28,6 @@ class CombinedNuance:
     """Nuance instance of each dataset, where the linear search must be already ran."""
     search_data: SearchData = None
     """SearchData instance of the combined dataset."""
-    c: float = 12.0
-    """The c parameter of the transit model."""
 
     def __post_init__(self):
         self._fill_search_data()
@@ -94,11 +91,49 @@ class CombinedNuance:
 
         self.eval_model = eval_model
 
-    def linear_search(self, t0s, Ds, progress=True):
-        for d in self.datasets:
-            d.linear_search(t0s, Ds, progress=progress)
+    def linear_search(
+        self,
+        t0s: np.ndarray,
+        Ds: np.ndarray,
+        positive: bool = True,
+        progress: bool = True,
+        backend: str = None,
+        batch_size: int = None,
+    ):
+        """Performs the linear search for each dataset. Linear searches are saved as :py:class:`~nuance.SearchData`
+        within each :py:class:`~nuance.Nuance` dataset.
 
-    def solve(self, t0, D, P):
+        Parameters
+        ----------
+        t0s : np.ndarray
+            array of model epochs
+        Ds : np.ndarray
+            array of model durations
+        positive : bool, optional
+            wether to force depth to be positive, by default True
+        progress : bool, optional
+            wether to show progress bar, by default True
+        backend : str, optional
+            backend to use, by default jax.default_backend() (options: "cpu", "gpu").
+            This affects the linear search function jax-mapping strategy. For more details, see
+            :py:func:`nuance.core.map_function`
+        batch_size : int, optional
+            batch size for parallel evaluation, by default None
+        Returns
+        -------
+        None
+        """
+        for d in self.datasets:
+            d.linear_search(
+                t0s,
+                Ds,
+                progress=progress,
+                backend=backend,
+                batch_size=batch_size,
+                positive=positive,
+            )
+
+    def solve(self, t0: float, D: float, P: float):
         """Solve the combined model for a given set of parameters.
 
         Parameters
@@ -121,7 +156,7 @@ class CombinedNuance:
         w, v = self.eval_model(models)
         return w, v
 
-    def snr(self, t0, D, P):
+    def snr(self, t0: float, D: float, P: float):
         """SNR of transit linearly solved for epoch `t0` and duration `D` (and period `P` for a periodic transit)
 
         Parameters
@@ -143,7 +178,7 @@ class CombinedNuance:
         w, v = self.solve(t0, D, P)
         return jnp.max(jnp.array([0, w[-1] / jnp.sqrt(v[-1, -1])]))
 
-    def periodic_search(self, periods, dphi=0.01):
+    def periodic_search(self, periods: np.ndarray, progress=True, dphi=0.01):
         """Performs the periodic search
 
         Parameters
@@ -184,7 +219,10 @@ class CombinedNuance:
         snr = np.zeros(n)
         params = np.zeros((n, 3))
 
-        for i, p in enumerate(tqdm(periods)):
+        def _progress(x, **kwargs):
+            return tqdm(x, **kwargs) if progress else x
+
+        for i, p in enumerate(_progress(periods)):
             snr[i], params[i] = _search(p)
 
         new_search_data = self.search_data.copy()
@@ -195,7 +233,7 @@ class CombinedNuance:
 
         return new_search_data
 
-    def models(self, t0, D, P, split=False):
+    def models(self, t0: float, D: float, P: float, split=False):
         """Solve the combined model for a given set of parameters.
 
         Parameters
