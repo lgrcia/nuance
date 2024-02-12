@@ -1,8 +1,8 @@
 # nuance
 
-<div  style="margin: 50px;">
-    <img src="docs/_static/illu.png" height="200" style="margin:50px">
-</div>
+<p align="center">
+    <img src="docs/_static/illu_readme.png" height="200" style="margin:50px">
+</p>
 
 <p align="center">
   Efficient detection of planets transiting active stars
