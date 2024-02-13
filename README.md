@@ -6,9 +6,9 @@
 
 <p align="center">
   Efficient detection of planets transiting active stars
-  <p align="center">
-    <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-lightgray.svg?style=flat" alt="license"/></a>
-    <a href="https://nuance.readthedocs.io"><img src="https://img.shields.io/badge/ReadThe-Doc-blue.svg?style=flat" alt="license"/></a>
+  <p align="center"> 
+    <a href="https://nuance.readthedocs.io">Documentation</a> -  <a href="https://arxiv.org/abs/2402.06835">Paper</a> - 
+    <a href="./LICENSE">MIT License</a> 
   </p>
 </p>
 

@@ -12,7 +12,9 @@ Efficient detection of planets transiting active stars
 ```
 <div style="margin: 100px"></div>
 
-*nuance* uses linear models and gaussian processes (using [JAX](https://github.com/google/jax)-based [tinygp](https://github.com/dfm/tinygp)) to simultaneously **search for planetary transits while modeling correlated noises** (e.g. stellar variability) in a tractable way.
+*nuance* uses linear models and gaussian processes (using [JAX](https://github.com/google/jax)-based [tinygp](https://github.com/dfm/tinygp)) to simultaneously **search for planetary transits while modeling correlated noises** (e.g. stellar variability) in a tractable way. 
+
+Paper released [on arxiv](https://arxiv.org/abs/2402.06835).
 
 ```{toctree}
 :maxdepth: 1
