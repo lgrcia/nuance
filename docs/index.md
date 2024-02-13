@@ -21,10 +21,9 @@ Paper released [on arxiv](https://arxiv.org/abs/2402.06835).
 :caption: Get started
 
 markdown/install
-notebooks/single.ipynb
-notebooks/periodic.ipynb
-notebooks/multi.ipynb
-notebooks/combined.ipynb
+notebooks/star.ipynb
+notebooks/templates.ipynb
+examples.md
 ```
 
 
