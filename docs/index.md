@@ -32,9 +32,9 @@ notebooks/combined.ipynb
 :maxdepth: 1
 :caption: Tutorials
 
+notebooks/tutorials/ground_based.ipynb
 notebooks/tutorials/tess_search.ipynb
 notebooks/tutorials/exocomet.ipynb
-notebooks/tutorials/ground_based.ipynb
 ```
 
 ```{toctree}
