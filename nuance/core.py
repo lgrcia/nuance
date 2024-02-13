@@ -31,6 +31,16 @@ def transit_box(time, t0, D, P=1e15):
     return -((jnp.abs(time - t0) % P) < D / 2).astype(float)
 
 
+def transit_exocomet(time, t0, duration, P=None, n=3):
+    flat = jnp.zeros_like(time)
+    left = -(time - (t0 - duration / n)) / (duration / n)
+    right = -jnp.exp(-2 / duration * (time - t0 - duration / n)) ** 2
+    triangle = jnp.maximum(left, right)
+    mask = time >= t0 - duration / n
+    signal = jnp.where(mask, triangle, flat)
+    return signal / jnp.max(jnp.array([-jnp.min(signal), 1]))
+
+
 def map_function(eval_function, model, time, backend, map_t0, map_D):
     jitted_eval = jax.jit(eval_function, backend=backend)
 
