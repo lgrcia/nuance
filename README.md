@@ -1,18 +1,11 @@
 # nuance
+Efficient detection of planets transiting active stars
 
 <p align="center">
     <img src="docs/_static/illu_readme.png" height="350" style="margin:50px">
 </p>
 
-<p align="center">
-  Efficient detection of planets transiting active stars
-  <p align="center"> 
-    <a href="https://nuance.readthedocs.io">Documentation</a> -  <a href="https://arxiv.org/abs/2402.06835">Paper</a> - 
-    <a href="./LICENSE">MIT License</a> 
-  </p>
-</p>
-
-*nuance* uses linear models and gaussian processes (using the [JAX](https://github.com/google/jax)-based [tinygp](https://github.com/dfm/tinygp)) to simultaneously **search for planetary transits while modeling correlated noises** (e.g. stellar variability) in a tractable way.
+*nuance* uses linear models and Gaussian processes (using the [JAX](https://github.com/google/jax)-based [tinygp](https://github.com/dfm/tinygp)) to simultaneously **search for planetary transits while modeling correlated noises** (e.g. stellar variability) in a tractable way. See [the paper](https://arxiv.org/abs/2402.06835) for more details.
 
 When to use *nuance*?
 - To detect single or periodic transits
