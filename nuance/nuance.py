@@ -11,7 +11,7 @@ import multiprocess as mp
 import numpy as np
 from scipy.ndimage import minimum_filter1d
 from tinygp import GaussianProcess, kernels
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 from nuance import DEVICES_COUNT, core, utils
 from nuance.search_data import SearchData

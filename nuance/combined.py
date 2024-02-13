@@ -4,7 +4,7 @@ from typing import List
 import jax.numpy as jnp
 import numpy as np
 from scipy.linalg import block_diag
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 from nuance.nuance import Nuance
 from nuance.search_data import SearchData
