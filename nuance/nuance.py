@@ -77,12 +77,17 @@ class Nuance:
 
     @property
     def searched(self):
-        """Whether the linear search has been performed"""
+        """Whether the linear search has been performed."""
         return self.search_data is not None
 
     @property
+    def time_span(self):
+        """Time span"""
+        return np.max(self.time) - np.min(self.time)
+
+    @property
     def ll0(self) -> float:
-        """log-likelihood of data without model
+        """Log-likelihood of data without model.
 
         Returns
         -------
@@ -196,7 +201,7 @@ class Nuance:
         return _mu()
 
     def models(self, t0: float = None, D: float = None, P: float = 1e15):
-        """Return the models corresponding to epoch `t0` and duration `D`(and period `P` for a periodic model)
+        """Return the models corresponding to epoch `t0` and duration `D`(and period `P` for a periodic model).
 
         Parameters
         ----------
@@ -236,7 +241,7 @@ class Nuance:
         return self._models(m)
 
     def solve(self, t0: float, D: float, P: float = None):
-        """solve linear model (suing `X`)
+        """Solve linear model (suing `X`).
 
         Parameters
         ----------
@@ -257,7 +262,7 @@ class Nuance:
         return w, v
 
     def depth(self, t0: float, D: float, P: float = None):
-        """depth linearly solved for epoch `t0` and duration `D` (and period `P` for a periodic model)
+        """Depth linearly solved for epoch `t0` and duration `D` (and period `P` for a periodic model).
 
         Parameters
         ----------
@@ -277,7 +282,7 @@ class Nuance:
         return w[-1], np.sqrt(v[-1, -1])
 
     def snr(self, t0: float, D: float, P: float = None):
-        """SNR of the model linearly solved for epoch `t0` and duration `D` (and period `P` for a periodic model)
+        """SNR of the model linearly solved for epoch `t0` and duration `D` (and period `P` for a periodic model).
 
         Parameters
         ----------
@@ -305,7 +310,7 @@ class Nuance:
         backend: str = None,
         batch_size: int = None,
     ):
-        """Performs the linear search. Saves the linear search `Nuance.search_data` as a :py:class:`nuance.SearchData` object
+        """Performs the linear search. Saves the linear search `Nuance.search_data` as a :py:class:`nuance.SearchData` object.
 
         Parameters
         ----------
@@ -376,7 +381,7 @@ class Nuance:
         )
 
     def periodic_search(self, periods: np.ndarray, progress=True, dphi=0.01):
-        """Performs the periodic search
+        """Performs the periodic search.
 
         Parameters
         ----------
