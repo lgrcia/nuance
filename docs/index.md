@@ -45,7 +45,7 @@ Efficient detection of planets transiting active stars
         <img class="p-2" src="_static/wire.png"/></div>
         <div class="text-center mb-2">
         <strong>The details</strong></div>
-        Read the <a href="https://arxiv.org/abs/2402.06835">nuance paper</a> or study the <a href="./markdown/API.html">API</a>
+        Read the <a href="https://arxiv.org/abs/2402.06835">nuance paper</a> or study the <a href="./markdown/API.html">API</a>.
     </div>
 </div>
 
