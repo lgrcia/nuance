@@ -10,47 +10,46 @@ Efficient detection of planets transiting active stars
 :height: 200px
 :align: center
 ```
-<div style="margin: 50px"></div>
+<div style="margin: 30px"></div>
+<style>
+.flex {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+      justify-content: space-evenly
+}
+.max-w-100 {
+    max-width: 14rem;
+}
+</style>
+
+<div class="flex flex-row  gap-5 mb-5">
+    <div class="max-w-100">
+        <div class="text-center mb-2">
+        <img class="p-2" src="_static/box.png"/></div>
+        <div class="text-center mb-2">
+        <strong>Where to start</strong></div>
+        Read the <a href="./notebooks/motivation.html">Motivation</a> behind the development of <i>nuance</i> and 
+        check out the basic transit search <a href="./examples.html">Examples</a>.
+    </div>
+    <div class="max-w-100">
+        <div class="text-center mb-2">
+        <img class="p-2" src="_static/star.png"/></div>
+        <div class="text-center mb-2">
+        <strong>Applications</strong></div>
+        Explore the applications of nuance on realistic datasets, such 
+        as <a href="./notebooks/tutorials/tess_search.html">TESS</a> or <a href="./notebooks/tutorials/ground_based.html">Ground-based</a> observations.
+    </div>
+    <div class="max-w-100">
+        <div class="text-center mb-2">
+        <img class="p-2" src="_static/wire.png"/></div>
+        <div class="text-center mb-2">
+        <strong>The details</strong></div>
+        Read the <a href="https://arxiv.org/abs/2402.06835">nuance paper</a> or study the <a href="./markdown/API.html">API</a>
+    </div>
+</div>
 
 
-````{grid} 3
----
-padding: 0
-margin: 0
-gutter: 0
----
-
-```{grid-item-card} 🐤 Where to start?
----
-class-card: sd-border-0
-shadow: None
----
-
-Read the [Motivation](./notebooks/motivation.ipynb) behind the development of *nuance* and 
-check out the basic transit search [Examples](./examples).
-```
-
-```{grid-item-card} 📦 Applications
----
-class-card: sd-border-0
-shadow: None
----
-
-Explore the applications of nuance on realistic datasets, such 
-as [TESS](./notebooks/tutorials/tess_search) or [Ground-based](./notebooks/tutorials/ground_based) observations.
-```
-
-```{grid-item-card} ⚙️ More details
----
-class-card: sd-border-0
-shadow: None
----
-
-Read the [*nuance* paper](https://arxiv.org/abs/2402.06835), learn [How the package works]() or study the 
-[API](./markdown/API.md).
-```
-
-````
 
 *nuance* uses linear models and gaussian processes (using [JAX](https://github.com/google/jax)-based [tinygp](https://github.com/dfm/tinygp)) to simultaneously **search for planetary transits while modeling correlated noises** (e.g. stellar variability) in a tractable way. 
 

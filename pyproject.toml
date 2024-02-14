@@ -37,6 +37,8 @@ sphinx-copybutton = "*"
 sphinx-design = "*"
 toml = "*"
 ipywidgets = "*"
+wotan = "*"
+astropy = "*"
 
 [build-system]
 requires = ["poetry-core"]
