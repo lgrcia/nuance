@@ -22,12 +22,10 @@ class Nuance:
     """
     `nuance` object containing the data and the linear and periodic search functions.
 
-    .. important::
+    .. note::
 
-        nuance mainly relies on `tinygp <https://github.com/dfm/tinygp>`_ as its Gaussian Process framework,
-        hence the :code:`gp` must be a :code:`tinygp.GaussianProcess` instance. See the
-        `tinygp documentation <https://tinygp.readthedocs.io>`_ for more details on
-        to build a Gaussian Process model and kernel.
+        `nuance` relies on `tinygp <https://github.com/dfm/tinygp>`_ to instantiate and manipulate Gaussian processes. See the
+        `tinygp documentation <https://tinygp.readthedocs.io>`_ for more details.
 
     Parameters
     ----------
@@ -38,17 +36,18 @@ class Nuance:
     error : np.ndarray, optional
         Flux error time series, by default None
     gp : tinygp GaussianProcess, optional
-        `tinygp <https://tinygp.readthedocs.io>`_ Gaussian process instance, by default None
+        `tinygp.GaussianProcess <https://tinygp.readthedocs.io/en/latest/api/summary/tinygp.GaussianProcess.html>`_ instance, by default None,
+        which creates a GP with a squared exponential kernel of lengthscale :math:`10^{12}` and sigma of  :math:`1`.
     X : np.ndarray, optional
-        Design matrix, by default None
+        Design matrix, by default None, which create a design matrix with a single column of ones.
     compute : bool, optional
-        Whether to pre-compute the Cholesky decomposition, by default True
+        Whether to pre-compute the Cholesky decomposition used by the GP, by default True.
     mean : float, optional
         Mean of the GP, by default 0.0
     search_data : SearchData, optional
-        Search data instance, by default None
+        Search data instance, by default None.
     model : callable, optional
-        Model function with signature `model(time, t0, D, P=None)`, by default None
+        Model function with signature `model(time, t0, D, P=None)`, by default None.
     """
 
     time: np.ndarray
