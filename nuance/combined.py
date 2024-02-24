@@ -21,7 +21,12 @@ def solve_triangular(*gps_y):
 @dataclass
 class CombinedNuance:
     """
-    An object for nuanced transit search in multiple datasets.
+    An object to combine `nuance` searches from multiple datasets.
+
+    Parameters
+    ----------
+    datasets : List[Nuance]
+        list of :py:class:`~nuance.Nuance` instances
     """
 
     datasets: List[Nuance]

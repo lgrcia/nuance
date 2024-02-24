@@ -20,7 +20,35 @@ from nuance.search_data import SearchData
 @dataclass
 class Nuance:
     """
-    nuance search model
+    `nuance` object containing the data and the linear and periodic search functions.
+
+    .. important::
+
+        nuance mainly relies on `tinygp <https://github.com/dfm/tinygp>`_ as its Gaussian Process framework,
+        hence the :code:`gp` must be a :code:`tinygp.GaussianProcess` instance. See the
+        `tinygp documentation <https://tinygp.readthedocs.io>`_ for more details on
+        to build a Gaussian Process model and kernel.
+
+    Parameters
+    ----------
+    time : np.ndarray
+        Time
+    flux : np.ndarray
+        Flux time series
+    error : np.ndarray, optional
+        Flux error time series, by default None
+    gp : tinygp GaussianProcess, optional
+        `tinygp <https://tinygp.readthedocs.io>`_ Gaussian process instance, by default None
+    X : np.ndarray, optional
+        Design matrix, by default None
+    compute : bool, optional
+        Whether to pre-compute the Cholesky decomposition, by default True
+    mean : float, optional
+        Mean of the GP, by default 0.0
+    search_data : SearchData, optional
+        Search data instance, by default None
+    model : callable, optional
+        Model function with signature `model(time, t0, D, P=None)`, by default None
     """
 
     time: np.ndarray
