@@ -10,7 +10,7 @@ Efficient detection of planets transiting active stars
 :height: 200px
 :align: center
 ```
-<div style="margin: 20px"></div>
+<div style="margin: 0px"></div>
 <style>
 .flex {
     display: flex;
