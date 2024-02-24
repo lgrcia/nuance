@@ -4,13 +4,13 @@ Efficient detection of planets transiting active stars
 
 ---
 
-<div style="margin: 100px"></div>
+<div style="margin: 60px"></div>
 
 ```{image} _static/illu.png
 :height: 200px
 :align: center
 ```
-<div style="margin: 30px"></div>
+<div style="margin: 20px"></div>
 <style>
 .flex {
     display: flex;
