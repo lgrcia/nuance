@@ -13,32 +13,32 @@ from nuance.utils import interp_split_times
 @dataclass
 class SearchData:
     """
-    An object that holds the results of the transit search.
+    An object that holds the results of the search.
     """
 
     # linear search grid
     t0s: np.ndarray
-    """Array of trial transit epochs."""
+    """Array of searched signal trial epochs."""
     Ds: np.ndarray
-    """Array of trial transit durations."""
+    """Array of searched signal trial durations."""
 
     # linear search results
     ll: Optional[np.ndarray] = None
-    """Single transit likelihoods."""
+    """Non-periodic signal likelihoods."""
     z: Optional[np.ndarray] = None
-    """Single transit depths."""
+    """Non-periodic signal depths."""
     vz: Optional[np.ndarray] = None
-    """Single transit depth variance."""
+    """Non-periodic signal depth variance."""
     ll0: Optional[float] = None
-    """Zero-transit likelihood."""
+    """No-signal likelihood."""
 
     # periodic search, Q is periodogram
     periods: Optional[np.ndarray] = None
-    """Array of trial periods."""
+    """Array of signal trial periods."""
     Q_snr: Optional[np.ndarray] = None
     """Periodogram SNR."""
     Q_ll: Optional[np.ndarray] = None
-    """Periodic transit likelihoods."""
+    """Periodic signal likelihoods."""
     Q_params: Optional[np.ndarray] = None
     """Periodogram best-fit parameters."""
 
@@ -65,7 +65,8 @@ class SearchData:
     @property
     def fold_ll(self):
         """
-        Returns a function that folds the likelihoods of all periods and t0s into a single period-folded likelihood.
+        Returns a function that folds the signal likelihoods of all periods and t0s into a
+        single period-folded likelihood.
 
         Returns:
             function: A function that takes a period and returns the folded likelihoods.
