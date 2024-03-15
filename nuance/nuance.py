@@ -474,10 +474,10 @@ class Nuance:
         ph = utils.phase(search_data.t0s, t0, P)
         t0_mask = np.abs(ph) > 2 * D
 
-        if np.count_nonzero(t0_mask) == len(search_data.t0s):
-            raise ValueError("Mask covers all data points")
-        elif len(t0_mask) == 0:
-            raise ValueError("No data to mask")
+        # if np.count_nonzero(t0_mask) == len(search_data.t0s):
+        #     raise ValueError("Mask covers all data points")
+        # elif len(t0_mask) == 0:
+        #     raise ValueError("No data to mask")
 
         search_data.llv = None
         search_data.llc = None
