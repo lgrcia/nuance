@@ -57,7 +57,7 @@ class Nuance:
     error: np.ndarray = None
     """Flux error time series"""
     gp: GaussianProcess = None
-    """Gaussian process instance"""
+    """tinygp.GaussianProcess instance"""
     X: np.ndarray = None
     """Design matrix"""
     compute: bool = True
@@ -306,7 +306,7 @@ class Nuance:
             model depth, depth error
         """
         w, v = self.solve(t0, D, P)
-        return w[-1], np.sqrt(v[-1, -1])
+        return w[-1], jnp.sqrt(v[-1, -1])
 
     def snr(self, t0: float, D: float, P: float = None):
         """SNR of the model linearly solved for epoch `t0` and duration `D` (and period `P` for a periodic model).
@@ -326,7 +326,7 @@ class Nuance:
             model snr
         """
         w, dw = self.depth(t0, D, P=P)
-        return np.max([0, w / dw])
+        return jnp.max(jnp.array([0, w / dw]))
 
     def linear_search(
         self,
@@ -474,10 +474,10 @@ class Nuance:
         ph = utils.phase(search_data.t0s, t0, P)
         t0_mask = np.abs(ph) > 2 * D
 
-        if np.count_nonzero(t0_mask) == len(search_data.t0s):
-            raise ValueError("Mask covers all data points")
-        elif len(t0_mask) == 0:
-            raise ValueError("No data to mask")
+        # if np.count_nonzero(t0_mask) == len(search_data.t0s):
+        #     raise ValueError("Mask covers all data points")
+        # elif len(t0_mask) == 0:
+        #     raise ValueError("No data to mask")
 
         search_data.llv = None
         search_data.llc = None
