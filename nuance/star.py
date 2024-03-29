@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 
-import astropy.units as u
 import numpy as np
 
 G = 2942.2062175044193
