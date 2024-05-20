@@ -47,7 +47,8 @@ class Nuance:
     search_data : SearchData, optional
         Search data instance, by default None.
     model : callable, optional
-        Model function with signature `model(time, t0, D, P=None)`, by default None.
+        Model function with signature `model(time, t0, D, P=None)`, by default None, which set the model to
+        :code:`partial(nuance.core.transit_protopapas, c=12)`
     """
 
     time: np.ndarray
@@ -67,7 +68,7 @@ class Nuance:
     search_data: SearchData = None
     """Search data instance"""
     model: callable = None
-    """Model function with signature `model(time, t0, D, P=None)`"""
+    """Model function with signature :code:`model(time, t0, D, P=None)`"""
 
     def __post_init__(self):
         if self.model is None:
@@ -137,12 +138,12 @@ class Nuance:
 
     def gp_optimization(self, build_gp, mask=None):
         """
-        Optimize the Gaussian Process (GP) model using the given build_gp function.
+        Optimization functions to fit a Gaussian Process given a building function.
 
         Parameters
         ----------
         build_gp : function
-            A function that returns a GP object.
+            A function that returns a tinygp.GaussianProcess object.
         mask : array-like, optional
             A boolean array to mask the data, by default None.
 
@@ -150,9 +151,10 @@ class Nuance:
         -------
         tuple
             A tuple containing three functions:
-            - optimize: a function that optimizes the GP model.
-            - mu: a function that returns the mean of the GP model.
-            - nll: a function that returns the negative log-likelihood of the GP model.
+
+            - :code:`optimize`: a function that optimizes the GP model.
+            - :code:`mu`: a function that returns the mean of the GP model (jax.jit-compiled).
+            - :code:`nll`: a function that returns the negative log-likelihood of the GP model (jax.jit-compiled).
         """
         if mask is None:
             mask = np.ones_like(self.time).astype(bool)

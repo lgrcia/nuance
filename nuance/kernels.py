@@ -1,8 +1,11 @@
-from tinygp import GaussianProcess, kernels
 import jax.numpy as jnp
+from tinygp import GaussianProcess, kernels
 
 
 def Rotation(sigma, period, Q0, dQ, f):
+    """
+    A kernel for a rotating star with a single mode of oscillation.
+    """
     Q1 = 1 / 2 + Q0 + dQ
     w1 = (4 * jnp.pi * Q1) / (period * jnp.sqrt(4 * Q1**2 - 1))
     s1 = sigma**2 / ((1 + f) * w1 * Q1)
@@ -15,7 +18,7 @@ def Rotation(sigma, period, Q0, dQ, f):
 
 
 def rotation(period=None, error=None, long_scale=0.5):
-    params = {
+    initial_params = {
         "log_period": jnp.log(period) if period is not None else jnp.log(1.0),
         "log_Q": jnp.log(100),
         "log_sigma": jnp.log(1e-1),
@@ -47,4 +50,4 @@ def rotation(period=None, error=None, long_scale=0.5):
 
         return GaussianProcess(kernel, time, diag=jitter2, mean=0.0)
 
-    return build_gp, params
+    return build_gp, initial_params

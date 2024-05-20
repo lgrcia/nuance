@@ -225,17 +225,21 @@ class Star:
 
         Parameters
         ----------
+        time_span : float
+            time span in days.
         period_max : float
             maximum period in days, by default None which
             defaults to half the time span.
         period_min : float, optional
             minimum period in days, by default None which
             defaults to the roche limit period.
+        oversampling: int, optional
+            oversampling factor, by default 1.
 
         Returns
         -------
         np.ndarray
-            period grid
+            periods in days.
         """
         if period_min is None:
             period_min = self.roche_period()
