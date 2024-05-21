@@ -39,7 +39,6 @@ toml = "*"
 ipywidgets = "*"
 wotan = "*"
 astropy = "*"
-toml = "*"
 
 [build-system]
 requires = ["poetry-core"]
