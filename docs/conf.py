@@ -60,10 +60,10 @@ html_static_path = ["_static"]
 # Title
 # get version number from pyproject.toml
 # --------------------------------------
-import toml
+# import toml
 
-pyproject = toml.load("../pyproject.toml")
-version = pyproject["tool"]["poetry"]["version"]
+# pyproject = toml.load("../pyproject.toml")
+# version = pyproject["tool"]["poetry"]["version"]
 # html_short_title = "nuance"
 # html_title = f"{html_short_title}"
 html_logo = "_static/logo.png"
