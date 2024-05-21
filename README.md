@@ -1,5 +1,5 @@
 # nuance
-Efficient detection of planets transiting active stars
+Efficient detection of planets transiting quiet or active stars
 
 <p align="center">
     <img src="docs/_static/illu_readme.png" height="350" style="margin:50px">
@@ -12,6 +12,7 @@ When to use *nuance*?
 - When correlated noises are present in the data (e.g. stellar variability or instrumental systematics)
 - For space-based or sparse ground-based observations
 - To effectively find transits in light curves from multiple instruments
+- To use GPUs for fast transit searches
 
 Documentation at [nuance.readthedocs.io](https://nuance.readthedocs.io)
 
