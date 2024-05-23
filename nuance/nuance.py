@@ -197,7 +197,6 @@ class Nuance:
 
             solver = jaxopt.ScipyMinimize(fun=inner)
             soln = solver.run(start)
-            print(soln.state)
 
             return dict(init_params, **soln.params)
 
