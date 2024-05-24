@@ -23,7 +23,7 @@ def eval_model(flux, X, gp):
     return function
 
 
-def model(x, y, build_gp, X=None):
+def gp_model(x, y, build_gp, X=None):
 
     if X is None:
         X = jnp.atleast_2d(jnp.ones_like(x))
@@ -51,20 +51,6 @@ def model(x, y, build_gp, X=None):
         return cond_gp.loc + w @ X
 
     return mu, nll
-
-
-def optimize(fun, init_params, param_names=None):
-    def inner(theta, *args, **kwargs):
-        params = dict(init_params, **theta)
-        return fun(params, *args, **kwargs)
-
-    param_names = list(init_params.keys()) if param_names is None else param_names
-    start = {k: init_params[k] for k in param_names}
-
-    solver = jaxopt.ScipyMinimize(fun=inner)
-    soln = solver.run(start)
-
-    return dict(init_params, **soln.params)
 
 
 def transit_protopapas(t, t0, D, P=1e15, c=12):

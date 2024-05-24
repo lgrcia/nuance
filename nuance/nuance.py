@@ -111,7 +111,7 @@ class Nuance:
     @property
     def time_span(self):
         """Time span"""
-        return np.max(self.time) - np.min(self.time)
+        return np.ptp(self.time)
 
     @property
     def ll0(self) -> float:
