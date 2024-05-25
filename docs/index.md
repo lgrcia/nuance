@@ -81,5 +81,6 @@ notebooks/tutorials/exocomet.ipynb
 :caption: Reference
 
 markdown/how.ipynb
+markdown/harware
 markdown/API
 ```
