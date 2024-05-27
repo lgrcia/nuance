@@ -326,38 +326,39 @@ class Nuance:
         if backend is None:
             backend = jax.default_backend()
 
+        if batch_size is None:
+            batch_size = {"cpu": DEVICES_COUNT, "gpu": 1000}[backend]
+
+        @jax.jit
+        def solve(t0, D):
+            m = self.model(self.time, t0, D)
+            ll, w, v = self.eval_model(m)
+            return jnp.array([w[-1], v[-1, -1], ll])
+
         if backend == "cpu":
-            eval_t0_Ds_function = core.pmap_cpus
-            if batch_size is None:
-                batch_size = DEVICES_COUNT
+            solve_batch = jax.pmap(
+                jax.vmap(solve, in_axes=(None, 0)), in_axes=(0, None)
+            )
+        else:
+            solve_batch = jax.vmap(
+                jax.vmap(solve, in_axes=(None, 0)), in_axes=(0, None)
+            )
 
-        elif backend == "gpu":
-            eval_t0_Ds_function = core.vmap_gpu
-            if batch_size is None:
-                batch_size = 1000
+        t0s_padded = np.pad(t0s, [0, batch_size - (len(t0s) % batch_size) % batch_size])
+        t0s_batches = np.reshape(
+            t0s_padded, (len(t0s_padded) // batch_size, batch_size)
+        )
 
-        eval_t0s_Ds = eval_t0_Ds_function(self.eval_model, self.model, self.time)
+        _progress = lambda x: (tqdm(x, unit_scale=batch_size) if progress else x)
 
-        batches_n = int(np.ceil(len(t0s) / batch_size))
-        padded_t0s = np.pad(t0s, pad_width=[0, batches_n * batch_size - len(t0s)])
-        batched_t0s = np.array(np.array_split(padded_t0s, batches_n))
+        results = []
 
-        ll = np.zeros((len(padded_t0s), len(Ds)))
-        depths = ll.copy()
-        vars = ll.copy()
-        depths = ll.copy()
+        for t0_batch in _progress(t0s_batches):
+            results.append(solve_batch(t0_batch, Ds))
 
-        _progress = lambda x: (tqdm(x) if progress else x)
-
-        for i, t0 in enumerate(_progress(batched_t0s)):
-            _depths, _vars, _ll = eval_t0s_Ds(t0, Ds)
-            depths[i * batch_size : (i + 1) * batch_size, :] = _depths.T
-            vars[i * batch_size : (i + 1) * batch_size, :] = _vars.T
-            ll[i * batch_size : (i + 1) * batch_size, :] = _ll.T
-
-        depths = np.array(depths[0 : len(t0s), :])
-        vars = np.array(vars[0 : len(t0s), :])
-        ll = np.array(ll[0 : len(t0s), :])
+        depths, vars, ll = np.transpose(results, axes=[3, 0, 1, 2]).reshape(
+            (3, len(t0s_padded), len(Ds))
+        )[:, 0 : len(t0s), :]
 
         if positive:
             ll0 = self.eval_model(np.zeros_like(self.time))[0]
