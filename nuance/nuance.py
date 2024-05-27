@@ -156,49 +156,10 @@ class Nuance:
             - :code:`mu`: a function that returns the mean of the GP model (jax.jit-compiled).
             - :code:`nll`: a function that returns the negative log-likelihood of the GP model (jax.jit-compiled).
         """
-        if mask is None:
-            mask = np.ones_like(self.time).astype(bool)
-
-        masked_x = self.time[mask]
-        masked_y = self.flux[mask]
-        masked_X = self.X[:, mask]
-
-        @jax.jit
-        def nll_w(params):
-            gp = build_gp(params, masked_x)
-            Liy = gp.solver.solve_triangular(masked_y)
-            LiX = gp.solver.solve_triangular(masked_X.T)
-            LiXT = LiX.T
-            LiX2 = LiXT @ LiX
-            w = jnp.linalg.lstsq(LiX2, LiXT @ Liy)[0]
-            nll = -gp.log_probability(masked_y - w @ masked_X)
-            return nll, w
-
-        @jax.jit
-        def nll(params):
-            return nll_w(params)[0]
-
-        @jax.jit
-        def mu(params):
-            gp = build_gp(params, masked_x)
-            _, w = nll_w(params)
-            cond_gp = gp.condition(masked_y - w @ masked_X, self.time).gp
-            return cond_gp.loc + w @ self.X
-
-        def optimize(init_params, param_names=None):
-            def inner(theta, *args, **kwargs):
-                params = dict(init_params, **theta)
-                return nll(params, *args, **kwargs)
-
-            param_names = (
-                list(init_params.keys()) if param_names is None else param_names
-            )
-            start = {k: init_params[k] for k in param_names}
-
-            solver = jaxopt.ScipyMinimize(fun=inner)
-            soln = solver.run(start)
-
-            return dict(init_params, **soln.params)
+        mu, nll = core.gp_model(
+            self.time[mask], self.flux[mask], build_gp, X=self.X[:, None]
+        )
+        optimize = partial(utils.minimize, nll)
 
         return optimize, mu, nll
 
@@ -545,26 +506,22 @@ class Nuance:
     def mask_flares(self, build_gp=None, init=None, window=20, sigma=5, iterations=3):
         # for now
         assert build_gp is not None and init is not None
-        mask = np.ones_like(self.time).astype(bool)
 
-        if build_gp is not None:
-            optimize, mu, nll = self.gp_optimization(build_gp)
-            opt = init.copy()
+        flare_mask = np.ones_like(self.time).astype(bool)
+        mu, nll = utils.minimize(self.time, self.flux, build_gp, X=self.X)
 
         for _ in range(iterations):
-            residuals = self.flux - mu(opt)
-            mask[residuals > sigma * np.std(residuals[mask])] = False
-            mask = np.roll(minimum_filter1d(mask, window), shift=window // 3)
-
-            if build_gp is not None:
-                optimize, mu, _ = self.gp_optimization(build_gp, mask)
-                opt = optimize(init)
+            residuals = self.flux - mu(gp_params)
+            flare_mask = flare_mask & utils.sigma_clip_mask(
+                residuals, sigma=sigma, window=window
+            )
+            gp_params = utils.minimize(nll, gp_params)
 
         new_nu = Nuance(
-            time=self.time[mask],
-            flux=self.flux[mask],
-            X=self.X[:, mask],
-            gp=build_gp(opt, self.time[mask]),
+            time=self.time[flare_mask],
+            flux=self.flux[flare_mask],
+            X=self.X[:, flare_mask],
+            gp=build_gp(gp_params, self.time[flare_mask]),
             compute=True,
         )
 
