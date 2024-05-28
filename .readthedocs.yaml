@@ -5,10 +5,8 @@ build:
   tools:
     python: "3.10"
   jobs:
-    post_create_environment:
-      - pip install poetry
     post_install:
-      - VIRTUAL_ENV=$READTHEDOCS_VIRTUALENV_PATH poetry install --with docs
+      - VIRTUAL_ENV=$READTHEDOCS_VIRTUALENV_PATH pip install ".[docs]"
 
 sphinx:
   configuration: docs/conf.py
