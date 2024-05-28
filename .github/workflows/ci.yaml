@@ -48,7 +48,7 @@ jobs:
   publish:
     environment:
       name: pypi
-      url: https://pypi.org/p/portrait
+      url: https://pypi.org/p/nuance
     permissions:
       id-token: write
     needs: [test]
