@@ -1,45 +1,46 @@
-[tool.poetry]
+[project]
 name = "nuance"
-version = "0.6.1"
+version = "0.7.0"
 description = "Transit signals detection among correlated noises"
-authors = ["Lionel Garcia"]
+authors = [{ name = "Lionel Garcia" }]
 license = "MIT"
 readme = "README.md"
+keywords = ["jax", "astronomy", "exoplanets", "transit"]
+classifiers = [
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+]
+requires-python = ">=3.9"
+dependencies = [
+    "jax>=0.4.25",
+    "tinygp",
+    "jaxlib",
+    "jaxopt",
+    "numpy",
+    "matplotlib",
+    "scipy",
+    "multiprocess",
+    "tqdm",
+]
 
-[tool.poetry.dependencies]
-python = ">=3.9,<3.12"
-tinygp = "*"
-jax = "^0.4.25"
-jaxlib = "*"
-jaxopt = "*"
-numpy = "*"
-matplotlib = "*"
-scipy = "*"
-multiprocess = "*"
-tqdm = "*"
+[project.optional-dependencies]
+dev = ["black", "isort", "pytest", "astropy"]
 
-[tool.poetry.group.dev.dependencies]
-pytest = "*"
-black = "*"
-
-[tool.poetry.group.test.dependencies]
-pytest = "*"
-astropy = "*"
-
-[tool.poetry.group.docs.dependencies]
-sphinx = "*"
-docutils = "*"
-jupyterlab = "*"
-myst-parser = "*"
-sphinx-book-theme = ">=1.1.0"
-myst-nb = "*"
-sphinx-copybutton = "*"
-sphinx-design = "*"
-toml = "*"
-ipywidgets = "*"
-wotan = "*"
-astropy = "*"
+docs = [
+    "sphinx",
+    "docutils",
+    "jupyterlab",
+    "myst-parser",
+    "sphinx-book-theme",
+    "myst-nb",
+    "sphinx-copybutton",
+    "sphinx-design",
+    "toml",
+    "ipywidgets",
+    "wotan",
+    "astropy",
+]
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"

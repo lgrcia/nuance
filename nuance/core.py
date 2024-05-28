@@ -2,9 +2,10 @@ from functools import partial
 
 import jax
 import jax.numpy as jnp
+import jaxopt
 
 
-def eval_model(flux, X, gp):
+def solve(flux, X, gp):
     Liy = gp.solver.solve_triangular(flux)
     LiX = gp.solver.solve_triangular(X.T)
 
@@ -20,6 +21,36 @@ def eval_model(flux, X, gp):
         return gp.log_probability(flux - w @ Xm), w, v
 
     return function
+
+
+def gp_model(x, y, build_gp, X=None):
+
+    if X is None:
+        X = jnp.atleast_2d(jnp.ones_like(x))
+
+    @jax.jit
+    def nll_w(params):
+        gp = build_gp(params, x)
+        Liy = gp.solver.solve_triangular(y)
+        LiX = gp.solver.solve_triangular(X.T)
+        LiXT = LiX.T
+        LiX2 = LiXT @ LiX
+        w = jnp.linalg.lstsq(LiX2, LiXT @ Liy)[0]
+        nll = -gp.log_probability(y - w @ X)
+        return nll, w
+
+    @jax.jit
+    def nll(params):
+        return nll_w(params)[0]
+
+    @jax.jit
+    def mu(params):
+        gp = build_gp(params, x)
+        _, w = nll_w(params)
+        cond_gp = gp.condition(y - w @ X, x).gp
+        return cond_gp.loc + w @ X
+
+    return mu, nll
 
 
 def transit_protopapas(t, t0, D, P=1e15, c=12):

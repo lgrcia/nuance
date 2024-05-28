@@ -1,6 +1,7 @@
-import numpy as np
 import os
+
 import jax
+import numpy as np
 
 jax.config.update("jax_enable_x64", True)
 os.environ["XLA_FLAGS"] = f"--xla_force_host_platform_device_count={os.cpu_count()}"
@@ -43,7 +44,7 @@ def test_mask_t0s_not_equal_time():
     nu = Nuance(time, flux, gp=gp, X=X)
 
     # linear search
-    t0s = np.random.choice(time, size=100, replace=False)
+    t0s = np.random.choice(time, size=122, replace=False)
     Ds = np.linspace(0.01, 0.2, 15)
     nu.linear_search(t0s, Ds)
 

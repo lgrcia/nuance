@@ -1,7 +1,8 @@
 import jax
-import matplotlib.pyplot as plt
+import jaxopt
 import numpy as np
 import tinygp
+from scipy.ndimage import minimum_filter1d
 
 from nuance import core
 from nuance.core import transit_protopapas
@@ -106,6 +107,8 @@ def plot_search(nu, search, bins=7 / 60 / 24):
     search : _type_
         _description_
     """
+    import matplotlib.pyplot as plt
+
     t0, D, P = search.best
 
     plt.subplot(2, 2, (1, 3))
@@ -230,3 +233,61 @@ def simulated_ground_based(n=500, N=4):
     }
 
     return observations, signals
+
+
+def minimize(fun, init_params, param_names=None):
+    """Minimize a function using jaxopt.ScipyMinimize
+
+    Parameters
+    ----------
+    fun : callable
+        the function to minimize of the form fun(params: dict) -> float
+    init_params : dict
+        initial parameters
+    param_names : list, optional
+        list of parameters to optimize, all others being fixed,
+        by default None
+
+    Returns
+    -------
+    dict
+        optimized parameters
+    """
+
+    def inner(theta, *args, **kwargs):
+        params = dict(init_params, **theta)
+        return fun(params, *args, **kwargs)
+
+    param_names = list(init_params.keys()) if param_names is None else param_names
+    start = {k: init_params[k] for k in param_names}
+
+    solver = jaxopt.ScipyMinimize(fun=inner)
+    soln = solver.run(start)
+
+    return dict(init_params, **soln.params)
+
+
+def sigma_clip_mask(residuals, sigma=5, window=20):
+    """Returns a masked of the sigma clipped data. The mask is set
+        to false on the +/-{windows} data points around the sigma
+        clipped residuals, i.e. code:`residuals > sigma * std(residuals)`.
+
+    Parameters
+    ----------
+    residuals : array
+        Data to sigma clip.
+    sigma : int, optional
+        Sigma clipping standard deviation, by default 5.
+    window : int, optional
+        The window of points around which mask is set to False if
+        a data point is sigma clipped, by default 20
+
+    Returns
+    -------
+    array
+        boolean mask of sigma clipped values (i.e :code:`<std(residuals)`).
+    """
+    mask = np.ones_like(residuals, dtype=bool)
+    mask[residuals > sigma * np.std(residuals)] = False
+    mask = np.roll(minimum_filter1d(mask, window), shift=window // 3)
+    return mask

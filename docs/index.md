@@ -61,8 +61,6 @@ Efficient detection of planets transiting quiet or active stars
 
 markdown/install
 notebooks/motivation.ipynb
-notebooks/star.ipynb
-notebooks/templates.ipynb
 examples.md
 ```
 
@@ -81,5 +79,8 @@ notebooks/tutorials/exocomet.ipynb
 :caption: Reference
 
 markdown/how.ipynb
+notebooks/star.ipynb
+notebooks/templates.ipynb
+markdown/hardware.md
 markdown/API
 ```

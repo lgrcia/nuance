@@ -91,7 +91,7 @@ class Nuance:
             )
 
         if self.compute:
-            self.eval_model = jax.jit(core.eval_model(self.flux, self.X, self.gp))
+            self._solve = jax.jit(core.solve(self.flux, self.X, self.gp))
 
         self.search_data = None
 
@@ -111,7 +111,7 @@ class Nuance:
     @property
     def time_span(self):
         """Time span"""
-        return np.max(self.time) - np.min(self.time)
+        return np.ptp(self.time)
 
     @property
     def ll0(self) -> float:
@@ -121,10 +121,10 @@ class Nuance:
         -------
         float
         """
-        return self.eval_model(np.zeros_like(self.time))[0].__array__()
+        return self._solve(np.zeros_like(self.time))[0].__array__()
 
     def _models(self, m):
-        _, w, _ = self.eval_model(m)
+        _, w, _ = self._solve(m)
         mean = w[0:-1] @ self.X
         signal = m * w[-1]
 
@@ -156,50 +156,10 @@ class Nuance:
             - :code:`mu`: a function that returns the mean of the GP model (jax.jit-compiled).
             - :code:`nll`: a function that returns the negative log-likelihood of the GP model (jax.jit-compiled).
         """
-        if mask is None:
-            mask = np.ones_like(self.time).astype(bool)
-
-        masked_x = self.time[mask]
-        masked_y = self.flux[mask]
-        masked_X = self.X[:, mask]
-
-        @jax.jit
-        def nll_w(params):
-            gp = build_gp(params, masked_x)
-            Liy = gp.solver.solve_triangular(masked_y)
-            LiX = gp.solver.solve_triangular(masked_X.T)
-            LiXT = LiX.T
-            LiX2 = LiXT @ LiX
-            w = jnp.linalg.lstsq(LiX2, LiXT @ Liy)[0]
-            nll = -gp.log_probability(masked_y - w @ masked_X)
-            return nll, w
-
-        @jax.jit
-        def nll(params):
-            return nll_w(params)[0]
-
-        @jax.jit
-        def mu(params):
-            gp = build_gp(params, masked_x)
-            _, w = nll_w(params)
-            cond_gp = gp.condition(masked_y - w @ masked_X, self.time).gp
-            return cond_gp.loc + w @ self.X
-
-        def optimize(init_params, param_names=None):
-            def inner(theta, *args, **kwargs):
-                params = dict(init_params, **theta)
-                return nll(params, *args, **kwargs)
-
-            param_names = (
-                list(init_params.keys()) if param_names is None else param_names
-            )
-            start = {k: init_params[k] for k in param_names}
-
-            solver = jaxopt.ScipyMinimize(fun=inner)
-            soln = solver.run(start)
-            print(soln.state)
-
-            return dict(init_params, **soln.params)
+        mu, nll = core.gp_model(
+            self.time[mask], self.flux[mask], build_gp, X=self.X[:, None]
+        )
+        optimize = partial(utils.minimize, nll)
 
         return optimize, mu, nll
 
@@ -222,7 +182,7 @@ class Nuance:
         @jax.jit
         def _mu():
             gp = self.gp
-            _, w, _ = self.eval_model(np.zeros_like(time))
+            _, w, _ = self._solve(np.zeros_like(time))
             w = w[0:-1]
             cond_gp = gp.condition(self.flux - w @ self.X, time).gp
             return cond_gp.loc + w @ self.X
@@ -287,7 +247,7 @@ class Nuance:
             (w, v): linear coefficients and their covariance matrix
         """
         m = self.model(self.time, t0, D, P)
-        _, w, v = self.eval_model(m)
+        _, w, v = self._solve(m)
         return w, v
 
     def depth(self, t0: float, D: float, P: float = None):
@@ -366,41 +326,42 @@ class Nuance:
         if backend is None:
             backend = jax.default_backend()
 
+        if batch_size is None:
+            batch_size = {"cpu": DEVICES_COUNT, "gpu": 1000}[backend]
+
+        @jax.jit
+        def solve(t0, D):
+            m = self.model(self.time, t0, D)
+            ll, w, v = self._solve(m)
+            return jnp.array([w[-1], v[-1, -1], ll])
+
         if backend == "cpu":
-            eval_t0_Ds_function = core.pmap_cpus
-            if batch_size is None:
-                batch_size = DEVICES_COUNT
+            solve_batch = jax.pmap(
+                jax.vmap(solve, in_axes=(None, 0)), in_axes=(0, None)
+            )
+        else:
+            solve_batch = jax.vmap(
+                jax.vmap(solve, in_axes=(None, 0)), in_axes=(0, None)
+            )
 
-        elif backend == "gpu":
-            eval_t0_Ds_function = core.vmap_gpu
-            if batch_size is None:
-                batch_size = 1000
+        t0s_padded = np.pad(t0s, [0, batch_size - (len(t0s) % batch_size) % batch_size])
+        t0s_batches = np.reshape(
+            t0s_padded, (len(t0s_padded) // batch_size, batch_size)
+        )
 
-        eval_t0s_Ds = eval_t0_Ds_function(self.eval_model, self.model, self.time)
+        _progress = lambda x: (tqdm(x, unit_scale=batch_size) if progress else x)
 
-        batches_n = int(np.ceil(len(t0s) / batch_size))
-        padded_t0s = np.pad(t0s, pad_width=[0, batches_n * batch_size - len(t0s)])
-        batched_t0s = np.array(np.array_split(padded_t0s, batches_n))
+        results = []
 
-        ll = np.zeros((len(padded_t0s), len(Ds)))
-        depths = ll.copy()
-        vars = ll.copy()
-        depths = ll.copy()
+        for t0_batch in _progress(t0s_batches):
+            results.append(solve_batch(t0_batch, Ds))
 
-        _progress = lambda x: (tqdm(x) if progress else x)
-
-        for i, t0 in enumerate(_progress(batched_t0s)):
-            _depths, _vars, _ll = eval_t0s_Ds(t0, Ds)
-            depths[i * batch_size : (i + 1) * batch_size, :] = _depths.T
-            vars[i * batch_size : (i + 1) * batch_size, :] = _vars.T
-            ll[i * batch_size : (i + 1) * batch_size, :] = _ll.T
-
-        depths = np.array(depths[0 : len(t0s), :])
-        vars = np.array(vars[0 : len(t0s), :])
-        ll = np.array(ll[0 : len(t0s), :])
+        depths, vars, ll = np.transpose(results, axes=[3, 0, 1, 2]).reshape(
+            (3, len(t0s_padded), len(Ds))
+        )[:, 0 : len(t0s), :]
 
         if positive:
-            ll0 = self.eval_model(np.zeros_like(self.time))[0]
+            ll0 = self._solve(np.zeros_like(self.time))[0]
             ll[depths < 0] = ll0
 
         vars[~np.isfinite(vars)] = 1e25
@@ -546,26 +507,22 @@ class Nuance:
     def mask_flares(self, build_gp=None, init=None, window=20, sigma=5, iterations=3):
         # for now
         assert build_gp is not None and init is not None
-        mask = np.ones_like(self.time).astype(bool)
 
-        if build_gp is not None:
-            optimize, mu, nll = self.gp_optimization(build_gp)
-            opt = init.copy()
+        flare_mask = np.ones_like(self.time).astype(bool)
+        mu, nll = utils.minimize(self.time, self.flux, build_gp, X=self.X)
 
         for _ in range(iterations):
-            residuals = self.flux - mu(opt)
-            mask[residuals > sigma * np.std(residuals[mask])] = False
-            mask = np.roll(minimum_filter1d(mask, window), shift=window // 3)
-
-            if build_gp is not None:
-                optimize, mu, _ = self.gp_optimization(build_gp, mask)
-                opt = optimize(init)
+            residuals = self.flux - mu(gp_params)
+            flare_mask = flare_mask & utils.sigma_clip_mask(
+                residuals, sigma=sigma, window=window
+            )
+            gp_params = utils.minimize(nll, gp_params)
 
         new_nu = Nuance(
-            time=self.time[mask],
-            flux=self.flux[mask],
-            X=self.X[:, mask],
-            gp=build_gp(opt, self.time[mask]),
+            time=self.time[flare_mask],
+            flux=self.flux[flare_mask],
+            X=self.X[:, flare_mask],
+            gp=build_gp(gp_params, self.time[flare_mask]),
             compute=True,
         )
 
