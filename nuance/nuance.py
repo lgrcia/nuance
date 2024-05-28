@@ -91,7 +91,7 @@ class Nuance:
             )
 
         if self.compute:
-            self.eval_model = jax.jit(core.eval_model(self.flux, self.X, self.gp))
+            self._solve = jax.jit(core.solve(self.flux, self.X, self.gp))
 
         self.search_data = None
 
@@ -121,10 +121,10 @@ class Nuance:
         -------
         float
         """
-        return self.eval_model(np.zeros_like(self.time))[0].__array__()
+        return self._solve(np.zeros_like(self.time))[0].__array__()
 
     def _models(self, m):
-        _, w, _ = self.eval_model(m)
+        _, w, _ = self._solve(m)
         mean = w[0:-1] @ self.X
         signal = m * w[-1]
 
@@ -182,7 +182,7 @@ class Nuance:
         @jax.jit
         def _mu():
             gp = self.gp
-            _, w, _ = self.eval_model(np.zeros_like(time))
+            _, w, _ = self._solve(np.zeros_like(time))
             w = w[0:-1]
             cond_gp = gp.condition(self.flux - w @ self.X, time).gp
             return cond_gp.loc + w @ self.X
@@ -247,7 +247,7 @@ class Nuance:
             (w, v): linear coefficients and their covariance matrix
         """
         m = self.model(self.time, t0, D, P)
-        _, w, v = self.eval_model(m)
+        _, w, v = self._solve(m)
         return w, v
 
     def depth(self, t0: float, D: float, P: float = None):
@@ -332,7 +332,7 @@ class Nuance:
         @jax.jit
         def solve(t0, D):
             m = self.model(self.time, t0, D)
-            ll, w, v = self.eval_model(m)
+            ll, w, v = self._solve(m)
             return jnp.array([w[-1], v[-1, -1], ll])
 
         if backend == "cpu":
@@ -361,7 +361,7 @@ class Nuance:
         )[:, 0 : len(t0s), :]
 
         if positive:
-            ll0 = self.eval_model(np.zeros_like(self.time))[0]
+            ll0 = self._solve(np.zeros_like(self.time))[0]
             ll[depths < 0] = ll0
 
         vars[~np.isfinite(vars)] = 1e25

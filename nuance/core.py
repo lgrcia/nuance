@@ -5,7 +5,7 @@ import jax.numpy as jnp
 import jaxopt
 
 
-def eval_model(flux, X, gp):
+def solve(flux, X, gp):
     Liy = gp.solver.solve_triangular(flux)
     LiX = gp.solver.solve_triangular(X.T)
 
