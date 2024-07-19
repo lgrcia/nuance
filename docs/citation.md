@@ -1,3 +1,5 @@
+# Citation
+
 If you find *nuance* useful for your research, cite [Garcia et. al 2024](https://ui.adsabs.harvard.edu/abs/2024AJ....167..284G). The BibTeX entry for the paper is:
 
 ```
