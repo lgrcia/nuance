@@ -62,6 +62,7 @@ Efficient detection of planets transiting quiet or active stars
 markdown/install
 notebooks/motivation.ipynb
 examples.md
+citation.md
 ```
 
 
