@@ -5,8 +5,8 @@ from typing import Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.interpolate import interp2d
 
+from nuance.core import interp2d
 from nuance.utils import interp_split_times
 
 
@@ -43,27 +43,7 @@ class SearchData:
     """Periodogram best-fit parameters."""
 
     @property
-    def _folds(self):
-        f_ll = interp2d(self.Ds, self.t0s, self.ll)
-        f_z = interp2d(self.Ds, self.t0s, self.z)
-        f_dz2 = interp2d(self.Ds, self.t0s, self.vz)
-
-        def interpolate_all(pt0s):
-            # computing the likelihood folds by interpolating in phase
-            folds_ll = np.array([f_ll(self.Ds, t) for t in pt0s])
-            folds_z = np.array([f_z(self.Ds, t) for t in pt0s])
-            folds_vz = np.array([f_dz2(self.Ds, t) for t in pt0s])
-
-            return folds_ll, folds_z, folds_vz
-
-        def _folds(p, dphi=0.01):
-            pt0s = interp_split_times(self.t0s, p, dphi=dphi)
-            return pt0s, interpolate_all(pt0s)
-
-        return _folds
-
-    @property
-    def fold_ll(self):
+    def fold(self):
         """
         Returns a function that folds the signal likelihoods of all periods and t0s into a
         single period-folded likelihood.
@@ -72,10 +52,15 @@ class SearchData:
             function: A function that takes a period and returns the folded likelihoods.
         """
 
-        folds = self._folds
+        f_ll = interp2d(self.t0s, self.ll)
+        f_z = interp2d(self.t0s, self.z)
+        f_dz2 = interp2d(self.t0s, self.vz)
 
-        def _fold(p, dphi=0.01):
-            pt0s, (lls, zs, vzs) = folds(p, dphi=dphi)
+        def _fold(times):
+            lls = np.array([f_ll(time) for time in times])
+            zs = np.array([f_z(time) for time in times])
+            vzs = np.array([f_dz2(time) for time in times])
+
             P1 = np.sum(lls, 0)
             vZ = 1 / np.sum(1 / vzs, 0)
             Z = vZ * np.sum(zs / vzs, 0)
@@ -84,9 +69,13 @@ class SearchData:
                 np.log(vzs) - np.log(vzs + vZ) + (zs - Z) ** 2 / (vzs + vZ), 0
             )
 
-            return pt0s[0] / p, P1, P1 - P2
+            return P1 - P2
 
-        return _fold
+        def fun(period):
+            times = interp_split_times(self.t0s, period)
+            return times[0] / period, _fold(times)
+
+        return fun
 
     @property
     def best(self):

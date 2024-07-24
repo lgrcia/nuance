@@ -24,6 +24,16 @@ def interp_split_times(time, p, dphi=0.01):
     return pt0s
 
 
+def time_phase_resample(time, phase, period):
+    t0 = np.min(time)
+    duration = np.ptp(time)
+    n = np.arange(np.ceil(duration / period) + 1)  # number of 'folds'
+    t0 -= t0 % period  # phase 0
+    t0s = np.array([t0 + (phase + j) * period for j in n])  # corresponding t0s
+    has_time = np.any([np.abs(time - _t0) < period / 2 for _t0 in t0s.mean(1)], 1)
+    return t0s[has_time]
+
+
 def phase(t, t0, p):
     return (t - t0 + 0.5 * p) % p - 0.5 * p
 

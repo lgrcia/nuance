@@ -1,11 +1,14 @@
 from dataclasses import dataclass
+from functools import partial
 from typing import List
 
 import jax.numpy as jnp
+import multiprocess as mp
 import numpy as np
-from scipy.linalg import block_diag
+from jax.scipy.linalg import block_diag
 from tqdm.auto import tqdm
 
+from nuance import utils
 from nuance.nuance import Nuance
 from nuance.search_data import SearchData
 
@@ -13,7 +16,7 @@ from nuance.search_data import SearchData
 def solve_triangular(*gps_y):
     Ls = [gp.solver.solve_triangular(y) for gp, y in gps_y]
     if Ls[0].ndim == 1:
-        return np.hstack(Ls)
+        return jnp.hstack(Ls)
     else:
         return block_diag(*Ls)
 
@@ -61,6 +64,15 @@ class CombinedNuance:
             z = np.vstack([d.search_data.z for d in self.datasets])
             vz = np.vstack([d.search_data.vz for d in self.datasets])
             ll0 = np.sum([d.search_data.ll0 for d in self.datasets])
+            ll = (
+                ll
+                - np.hstack(
+                    [
+                        np.ones_like(dataset.search_data.t0s) * dataset.search_data.ll0
+                        for dataset in self.datasets
+                    ]
+                )[:, None]
+            ) + ll0
 
             self.search_data = SearchData(t0s, Ds, ll, z, vz, ll0)
         else:
@@ -85,7 +97,7 @@ class CombinedNuance:
         Liy = solve_triangular(*[(d.gp, d.flux) for d in self.datasets])
         LiX = solve_triangular(*[(d.gp, d.X.T) for d in self.datasets])
 
-        def eval_model(ms):
+        def solve(ms):
             Lim = solve_triangular(*[(d.gp, m) for d, m in zip(self.datasets, ms)])
             LiXm = jnp.hstack([LiX, Lim[:, None]])
             LiXmT = LiXm.T
@@ -94,7 +106,7 @@ class CombinedNuance:
             v = jnp.linalg.inv(LimX2)
             return w, v
 
-        self.eval_model = eval_model
+        self._solve = solve
 
     def linear_search(
         self,
@@ -158,7 +170,7 @@ class CombinedNuance:
             (w, v): linear coefficients and their covariance matrix
         """
         models = [self.model(d.search_data.t0s, t0, D, P) for d in self.datasets]
-        w, v = self.eval_model(models)
+        w, v = self._solve(models)
         return w, v
 
     def snr(self, t0: float, D: float, P: float):
@@ -184,7 +196,7 @@ class CombinedNuance:
         return jnp.max(jnp.array([0, w[-1] / jnp.sqrt(v[-1, -1])]))
 
     def periodic_search(self, periods: np.ndarray, progress=True, dphi=0.01):
-        """Performs the periodic search
+        """Performs the periodic search.
 
         Parameters
         ----------
@@ -195,42 +207,32 @@ class CombinedNuance:
         dphi: float, optional
             the relative step size of the phase grid. For each period, all likelihood quantities along time are
             interpolated along a phase grid of resolution `min(1/200, dphi/P))`. The smaller dphi
-            the finer the grid, and the more resolved the transit epoch and period (the the more computationally expensive the
+            the finer the grid, and the more resolved the model epoch and period (but the more computationally expensive the
             periodic search). The default is 0.01.
 
         Returns
         -------
-        :py:class:`nuance.SearchData`
+        :py:class:`~nuance.SearchData`
             search results
         """
+        new_search_data = self.search_data.copy()
         n = len(periods)
-        assert all(
-            [d.search_data is not None for d in self.datasets]
-        ), "linear search missing on at least one dataset"
-        fold_functions = [d.search_data.fold_ll for d in self.datasets]
-        Ds = self.search_data.Ds
-
-        def _search(p):
-            phase, _, p0 = fold_functions[0](p, dphi)
-            P2 = p0 + np.sum([f(p)[2] for f in fold_functions[1:]], axis=0)
-            i, j = np.unravel_index(np.argmax(P2), P2.shape)
-            Ti = phase[i] * p
-            return float(self.snr(Ti, Ds[j], p)), (
-                Ti,
-                Ds[j],
-                p,
-            )
-
         snr = np.zeros(n)
         params = np.zeros((n, 3))
 
         def _progress(x, **kwargs):
             return tqdm(x, **kwargs) if progress else x
 
-        for i, p in enumerate(_progress(periods)):
-            snr[i], params[i] = _search(p)
+        global SEARCH
+        SEARCH = partial(self.search_data.fold)
 
-        new_search_data = self.search_data.copy()
+        with mp.Pool() as pool:
+            for p, (Ti, j, P) in enumerate(
+                _progress(pool.imap(_search, periods), total=len(periods))
+            ):
+                Dj = new_search_data.Ds[j]
+                pass
+                snr[p], params[p] = float(self.snr(Ti, Dj, P)), (Ti, Dj, P)
 
         new_search_data.periods = periods
         new_search_data.Q_snr = snr
@@ -256,7 +258,7 @@ class CombinedNuance:
             (w, v): linear coefficients and their covariance matrix
         """
         ms = [d.model(d.time, t0, D, P) for d in self.datasets]
-        w, _ = self.eval_model(ms)
+        w, _ = self._solve(ms)
 
         # means
         w_idxs = [0, *np.cumsum([d.X.shape[0] for d in self.datasets])]
@@ -284,3 +286,10 @@ class CombinedNuance:
         new_self._fill_search_data()
         new_self._compute_L()
         return new_self
+
+
+def _search(p):
+    phase, P2 = SEARCH(p)
+    i, j = np.unravel_index(np.argmax(P2), P2.shape)
+    Ti = phase[i] * p
+    return Ti, j, p

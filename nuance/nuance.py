@@ -399,7 +399,7 @@ class Nuance:
             return tqdm(x, **kwargs) if progress else x
 
         global SEARCH
-        SEARCH = partial(self.search_data.fold_ll, dphi=dphi)
+        SEARCH = self.search_data.fold
 
         with mp.Pool() as pool:
             for p, (Ti, j, P) in enumerate(
@@ -530,7 +530,7 @@ class Nuance:
 
 
 def _search(p):
-    phase, _, P2 = SEARCH(p)
+    phase, P2 = SEARCH(p)
     i, j = np.unravel_index(np.argmax(P2), P2.shape)
     Ti = phase[i] * p
     return Ti, j, p
