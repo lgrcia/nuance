@@ -69,6 +69,7 @@ examples.md
 :maxdepth: 1
 :caption: Tutorials
 
+notebooks/tutorials/GP_optimization.ipynb
 notebooks/tutorials/ground_based.ipynb
 notebooks/tutorials/tess_search.ipynb
 notebooks/tutorials/exocomet.ipynb
