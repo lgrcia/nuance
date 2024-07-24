@@ -87,5 +87,36 @@ def map_function(eval_function, model, time, backend, map_t0, map_D):
     return ds_t0s_eval
 
 
+def _interp2d(xp, fp):
+    import numpy as np
+
+    xp = np.asarray(xp)
+    fp = np.asarray(fp.T)
+
+    # @jax.jit
+    def fun(x):
+        x = np.asarray(x)
+        j = np.searchsorted(xp, x) - 1
+        d = np.where(j + 1 < len(xp), (x - xp[j]) / (xp[j + 1] - xp[j]), 0)
+        return ((1 - d) * fp[:, j] + fp[:, j + 1] * d).T
+
+    return fun
+
+
+def interp2d(xp, fp):
+    import numpy as np
+
+    xp = np.asarray(xp)
+    fp = np.asarray(fp)
+
+    # @jax.jit
+    def fun(x):
+        x = np.asarray(x)
+        j = np.searchsorted(xp, x) - 1
+        return fp[j]
+
+    return fun
+
+
 pmap_cpus = partial(map_function, backend="cpu", map_t0=jax.pmap, map_D=jax.vmap)
 vmap_gpu = partial(map_function, backend="gpu", map_t0=jax.vmap, map_D=jax.vmap)
