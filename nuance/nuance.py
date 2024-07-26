@@ -48,7 +48,7 @@ class Nuance:
         Search data instance, by default None.
     model : callable, optional
         Model function with signature `model(time, t0, D, P=None)`, by default None, which set the model to
-        :code:`partial(nuance.core.transit_protopapas, c=12)`
+        :code:`partial(nuance.core.transit, c=12)`
     """
 
     time: np.ndarray
@@ -72,7 +72,7 @@ class Nuance:
 
     def __post_init__(self):
         if self.model is None:
-            self.model = partial(core.transit_protopapas, c=12)
+            self.model = partial(core.transit, c=12)
 
         self.model = jax.jit(self.model)
 
@@ -91,7 +91,7 @@ class Nuance:
             )
 
         if self.compute:
-            self._solve = jax.jit(core.solve(self.flux, self.X, self.gp))
+            self._solve = jax.jit(core.solve_model(self.flux, self.X, self.gp))
 
         self.search_data = None
 

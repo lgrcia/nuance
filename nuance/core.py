@@ -1,24 +1,85 @@
-from functools import partial
-
 import jax
 import jax.numpy as jnp
-import jaxopt
+from jax.scipy.linalg import block_diag
+from tinygp import GaussianProcess, kernels
 
 
-def solve(flux, X, gp):
-    Liy = gp.solver.solve_triangular(flux)
-    LiX = gp.solver.solve_triangular(X.T)
+def solve_triangular(*gps_y):
+    Ls = [gp.solver.solve_triangular(y) for gp, y in gps_y]
+    if Ls[0].ndim == 1:
+        return jnp.hstack(Ls)
+    else:
+        return block_diag(*Ls)
 
-    @jax.jit
-    def function(m):
-        Xm = jnp.vstack([X, m])
-        Lim = gp.solver.solve_triangular(m)
-        LiXm = jnp.hstack([LiX, Lim[:, None]])
-        LiXmT = LiXm.T
-        LimX2 = LiXmT @ LiXm
-        w = jnp.linalg.lstsq(LimX2, LiXmT @ Liy)[0]
-        v = jnp.linalg.inv(LimX2)
-        return gp.log_probability(flux - w @ Xm), w, v
+
+DEFAULT_X = lambda time: jnp.atleast_2d(jnp.ones_like(time))
+DEFAULT_GP = lambda time: GaussianProcess(kernels.quasisep.Exp(1e12), time)
+
+
+def solve_model(flux, X, gp):
+
+    # multiple gps and datasets
+    if isinstance(flux, (list, tuple)):
+        assert (
+            len(gp) == len(flux) == len(X)
+        ), "gp, flux, and datasets must have the same length"
+        Liy = solve_triangular(*[(_gp, _flux) for _gp, _flux in zip(gp, flux)])
+        LiX = solve_triangular(*[(_gp, _X.T) for _gp, _X in zip(gp, X)])
+
+        @jax.jit
+        def function(ms):
+            Lim = solve_triangular(*[(_gp, m) for _gp, m in zip(gp, ms)])
+            LiXm = jnp.hstack([LiX, Lim[:, None]])
+            LiXmT = LiXm.T
+            LimX2 = LiXmT @ LiXm
+            w = jnp.linalg.lstsq(LimX2, LiXmT @ Liy)[0]
+            v = jnp.linalg.inv(LimX2)
+            return 0.0, w, v
+
+        return function
+
+    # single gp and dataset
+    else:
+        Liy = gp.solver.solve_triangular(flux)
+        LiX = gp.solver.solve_triangular(X.T)
+
+        @jax.jit
+        def function(m):
+            Xm = jnp.vstack([X, m])
+            Lim = gp.solver.solve_triangular(m)
+            LiXm = jnp.hstack([LiX, Lim[:, None]])
+            LiXmT = LiXm.T
+            LimX2 = LiXmT @ LiXm
+            w = jnp.linalg.lstsq(LimX2, LiXmT @ Liy)[0]
+            v = jnp.linalg.inv(LimX2)
+            return gp.log_probability(flux - w @ Xm), w, v
+
+        return function
+
+
+def solve(time, flux, gp=None, X=None, model=None):
+    if X is None:
+        X = DEFAULT_X(time)
+    if gp is None:
+        gp = DEFAULT_GP(time)
+    if model is None:
+        model = transit
+
+    solve_m = solve_model(flux, X, gp)
+
+    # multiple datasets
+    if isinstance(time, (list, tuple)):
+
+        def _model(time, epoch, duration, period=None):
+            return [model(t, epoch, duration, period=period) for t in time]
+
+    else:
+        _model = model
+
+    def function(epoch, duration, period=None):
+        m = _model(time, epoch, duration, period=period)
+        ll, w, v = solve_m(m)
+        return jnp.array([w[-1], v[-1, -1], ll])
 
     return function
 
@@ -53,8 +114,10 @@ def gp_model(x, y, build_gp, X=None):
     return mu, nll
 
 
-def transit_protopapas(t, t0, D, P=1e15, c=12):
-    _t = P * jnp.sin(jnp.pi * (t - t0) / P) / (jnp.pi * D)
+def transit(t, epoch, duration, period=None, c=12):
+    if period is None:
+        period = 1e15
+    _t = period * jnp.sin(jnp.pi * (t - epoch) / period) / (jnp.pi * duration)
     return -0.5 * jnp.tanh(c * (_t + 1 / 2)) + 0.5 * jnp.tanh(c * (_t - 1 / 2))
 
 
@@ -72,28 +135,56 @@ def transit_exocomet(time, t0, duration, P=None, n=3):
     return signal / jnp.max(jnp.array([-jnp.min(signal), 1]))
 
 
-def map_function(eval_function, model, time, backend, map_t0, map_D):
-    jitted_eval = jax.jit(eval_function, backend=backend)
+def separate_models(time, flux, X=None, gp=None, model=None):
+    if X is None:
+        X = DEFAULT_X(time)
+    if gp is None:
+        gp = DEFAULT_GP(time)
+    if model is None:
+        model = transit
 
-    @jax.jit
-    def single_eval(t0, D):
-        m = model(time, t0, D)
-        ll, w, v = jitted_eval(m)
-        return w[-1], v[-1, -1], ll
+    solver = solve_model(flux, X, gp)
 
-    t0s_eval = map_t0(single_eval, in_axes=(0, None))
-    ds_t0s_eval = map_D(t0s_eval, in_axes=(None, 0))
+    def function(epoch, duration, period=None):
+        m = model(time, epoch, duration, period=period)
+        w = solver(m)[1]
+        mean = w[0:-1] @ X
+        signal = m * w[-1]
 
-    return ds_t0s_eval
+        @jax.jit
+        def gp_mean():
+            return gp.condition(flux - mean - signal).gp.mean
+
+        noise = gp_mean()
+
+        return mean, signal, noise
+
+    return function
 
 
-def _interp2d(xp, fp):
+def snr(time, flux, X=None, gp=None, model=None):
+    if X is None:
+        X = DEFAULT_X(time)
+    if gp is None:
+        gp = DEFAULT_GP(time)
+    if model is None:
+        model = transit
+
+    solver = solve(time, flux, gp=gp, X=X, model=model)
+
+    def function(epoch, duration, period=None):
+        z, vz, _ = solver(epoch, duration, period)
+        return jnp.max(jnp.array([0, z / jnp.sqrt(vz)]))
+
+    return function
+
+
+def interpolate(xp, fp):
     import numpy as np
 
     xp = np.asarray(xp)
     fp = np.asarray(fp.T)
 
-    # @jax.jit
     def fun(x):
         x = np.asarray(x)
         j = np.searchsorted(xp, x) - 1
@@ -103,20 +194,15 @@ def _interp2d(xp, fp):
     return fun
 
 
-def interp2d(xp, fp):
+def nearest_neighbors(xp, fp):
     import numpy as np
 
     xp = np.asarray(xp)
     fp = np.asarray(fp)
 
-    # @jax.jit
     def fun(x):
         x = np.asarray(x)
         j = np.searchsorted(xp, x) - 1
         return fp[j]
 
     return fun
-
-
-pmap_cpus = partial(map_function, backend="cpu", map_t0=jax.pmap, map_D=jax.vmap)
-vmap_gpu = partial(map_function, backend="gpu", map_t0=jax.vmap, map_D=jax.vmap)

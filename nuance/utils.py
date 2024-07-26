@@ -5,7 +5,6 @@ import tinygp
 from scipy.ndimage import minimum_filter1d
 
 from nuance import core
-from nuance.core import transit_protopapas
 
 
 def interp_split_times(time, p, dphi=0.01):
@@ -96,7 +95,7 @@ def simulated(
     if w is None:
         w = [1.0, 5e-4, -2e-4, -5e-4]
 
-    true_transit = depth * core.transit_protopapas(time, t0, D, P=P)
+    true_transit = depth * core.transit(time, t0, D, period=P)
 
     if kernel is None:
         kernel = tinygp.kernels.quasisep.SHO(np.pi / (6 * D), 45.0, depth)
@@ -211,7 +210,7 @@ def simulated_ground_based(n=500, N=4):
     ]
 
     transits = np.split(
-        true["depth"] * transit_protopapas(time, 0.3, true["D"], true["P"]), idxs
+        true["depth"] * core.transit(time, 0.3, true["D"], true["P"]), idxs
     )
 
     systematics = [

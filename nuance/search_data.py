@@ -6,7 +6,7 @@ from typing import Optional
 import matplotlib.pyplot as plt
 import numpy as np
 
-from nuance.core import interp2d
+from nuance.core import nearest_neighbors as interp2d
 from nuance.utils import interp_split_times
 
 
