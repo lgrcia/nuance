@@ -3,6 +3,20 @@ import jax.numpy as jnp
 from jax.scipy.linalg import block_diag
 from tinygp import GaussianProcess, kernels
 
+INPUTS_DOCS = """
+    time : np.ndarray
+        array of times
+    flux : np.ndarray
+        array of fluxes
+    X : np.ndarray, optional
+        linear model design matrix, by default a constant model
+    gp : tinygp.GaussianProcess, optional
+        Gaussian process object, by default a very long scale exponential kernel
+    model : callable, optional
+        model function with signature :code:`model(time, epoch, duration, period=None) -> Array`,
+        by default an empirical :py:func:`~nuance.core.transit` model
+"""
+
 DEFAULT_X = lambda time: jnp.atleast_2d(jnp.ones_like(time))
 DEFAULT_GP = lambda time: GaussianProcess(kernels.quasisep.Exp(1e12), time)
 
@@ -67,6 +81,33 @@ def solve_model(flux, X, gp):
 
 
 def solve(time, flux, gp=None, X=None, model=None):
+    """Returns a function to compute the log likelihood of data assuming it is drawn
+    from a Gaussian Process with a mean linear model.
+
+    `X` is a design matrix for the linear model whose last column is the searched signal
+    :code:`model`.
+
+    Parameters
+    ----------
+    time : np.ndarray
+        array of times
+    flux : np.ndarray
+        array of fluxes
+    X : np.ndarray, optional
+        linear model design matrix, by default a constant model
+    gp : tinygp.GaussianProcess, optional
+        Gaussian process object, by default a very long scale exponential kernel
+    model : callable, optional
+        model function with signature :code:`model(time, epoch, duration, period=None) -> Array`,
+        by default an empirical :py:func:`~nuance.core.transit` model
+
+    Returns
+    -------
+    callable
+        function that computes the log likelihood of data assuming it is drawn from a
+        Gaussian Process with a mean linear model. Signature is:
+        :code:`function(epoch, duration, period=None) -> (log_likelihood, weights, variance)`
+    """
 
     X, gp, model = check_default(time, X, gp, model)
 
@@ -122,23 +163,81 @@ def gp_model(x, y, build_gp, X=None):
     return mu, nll
 
 
-def transit(t, epoch, duration, period=None, c=12):
+def transit(time, epoch, duration, period=None, c=12):
+    """Empirical transit model from Protopapas et al. 2005.
+
+    Parameters
+    ----------
+    time : np.ndarray
+        array of times
+    epoch : float
+        signal epoch
+    duration : float
+        signal duration
+    period : float, optional
+        signal period, by default None for a non-periodic signal
+    c : int, optional
+        controls the 'roundness' of transit shape, by default 12
+
+    Returns
+    -------
+    np.ndarray
+        array of transit model values
+    """
     if period is None:
         period = 1e15
-    _t = period * jnp.sin(jnp.pi * (t - epoch) / period) / (jnp.pi * duration)
+    _t = period * jnp.sin(jnp.pi * (time - epoch) / period) / (jnp.pi * duration)
     return -0.5 * jnp.tanh(c * (_t + 1 / 2)) + 0.5 * jnp.tanh(c * (_t - 1 / 2))
 
 
-def transit_box(time, t0, D, P=1e15):
-    return -((jnp.abs(time - t0) % P) < D / 2).astype(float)
+def transit_box(time, epoch, duration, period=1e15):
+    """Box-shaped transit model.
+
+    Parameters
+    ----------
+    time : np.ndarray
+        array of times
+    epoch : float
+        signal epoch
+    duration : float
+        signal duration
+    period : float, optional
+        signal period, by default None for a non-periodic signal
+
+    Returns
+    -------
+    np.ndarray
+        array of transit model values
+    """
+    return -((jnp.abs(time - epoch) % period) < duration / 2).astype(float)
 
 
-def transit_exocomet(time, t0, duration, P=None, n=3):
+def transit_exocomet(time, epoch, duration, period=None, n=3):
+    """Empirical exocomet transit model.
+
+    Parameters
+    ----------
+    time : np.ndarray
+        array of times
+    epoch : float
+        signal epoch
+    duration : float
+        signal duration
+    period : float, optional
+        dummy parameter for compatibility with other models, by default None
+    n : int, optional
+        TBD, by default 3
+
+    Returns
+    -------
+    np.ndarray
+        array of transit model values
+    """
     flat = jnp.zeros_like(time)
-    left = -(time - (t0 - duration / n)) / (duration / n)
-    right = -jnp.exp(-2 / duration * (time - t0 - duration / n)) ** 2
+    left = -(time - (epoch - duration / n)) / (duration / n)
+    right = -jnp.exp(-2 / duration * (time - epoch - duration / n)) ** 2
     triangle = jnp.maximum(left, right)
-    mask = time >= t0 - duration / n
+    mask = time >= epoch - duration / n
     signal = jnp.where(mask, triangle, flat)
     return signal / jnp.max(jnp.array([-jnp.min(signal), 1]))
 
@@ -150,16 +249,16 @@ def separate_models(time, flux, X=None, gp=None, model=None):
     Parameters
     ----------
     time : np.ndarray
-        array of time values
+        array of times
     flux : np.ndarray
-        flux time series
+        array of fluxes
     X : np.ndarray, optional
         linear model design matrix, by default a constant model
     gp : tinygp.GaussianProcess, optional
-        gaussian process object, by default a very long scale exponential kernel
+        Gaussian process object, by default a very long scale exponential kernel
     model : callable, optional
-        model function with signature model(time, epoch, duration, period=None), by
-        default a transit model
+        model function with signature :code:`model(time, epoch, duration, period=None) -> Array`,
+        by default an empirical :py:func:`~nuance.core.transit` model
 
     Returns
     -------
@@ -197,16 +296,16 @@ def snr(time, flux, X=None, gp=None, model=None):
     Parameters
     ----------
     time : np.ndarray
-        array of time values
+        array of times
     flux : np.ndarray
-        flux time series
+        array of fluxes
     X : np.ndarray, optional
         linear model design matrix, by default a constant model
     gp : tinygp.GaussianProcess, optional
-        gaussian process object, by default a very long scale exponential kernel
+        Gaussian process object, by default a very long scale exponential kernel
     model : callable, optional
-        model function with signature model(time, epoch, duration, period=None), by
-        default a transit model
+        model function with signature :code:`model(time, epoch, duration, period=None) -> Array`,
+        by default an empirical :py:func:`~nuance.core.transit` model
 
     Returns
     -------

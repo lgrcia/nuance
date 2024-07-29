@@ -10,10 +10,18 @@
    :template: class.rst
 
    Star
-   linear_search
-   periodic_search
-   core.snr
-   core.separate_models
 
+```
+
+```{eval-rst}
+
+.. currentmodule:: nuance
+
+.. autofunction:: linear_search
+.. autofunction:: periodic_search
+
+.. automodule:: nuance.core
+   :members:
+   :show-inheritance:
 
 ```
