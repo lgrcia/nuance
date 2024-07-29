@@ -3,6 +3,19 @@ import jax.numpy as jnp
 from jax.scipy.linalg import block_diag
 from tinygp import GaussianProcess, kernels
 
+DEFAULT_X = lambda time: jnp.atleast_2d(jnp.ones_like(time))
+DEFAULT_GP = lambda time: GaussianProcess(kernels.quasisep.Exp(1e12), time)
+
+
+def check_default(time, X=None, gp=None, model=None):
+    if X is None:
+        X = DEFAULT_X(time)
+    if gp is None:
+        gp = DEFAULT_GP(time)
+    if model is None:
+        model = transit
+    return X, gp, model
+
 
 def solve_triangular(*gps_y):
     Ls = [gp.solver.solve_triangular(y) for gp, y in gps_y]
@@ -10,10 +23,6 @@ def solve_triangular(*gps_y):
         return jnp.hstack(Ls)
     else:
         return block_diag(*Ls)
-
-
-DEFAULT_X = lambda time: jnp.atleast_2d(jnp.ones_like(time))
-DEFAULT_GP = lambda time: GaussianProcess(kernels.quasisep.Exp(1e12), time)
 
 
 def solve_model(flux, X, gp):
@@ -58,10 +67,9 @@ def solve_model(flux, X, gp):
 
 
 def solve(time, flux, gp=None, X=None, model=None):
-    if X is None:
-        X = DEFAULT_X(time)
-    if gp is None:
-        gp = DEFAULT_GP(time)
+
+    X, gp, model = check_default(time, X, gp, model)
+
     if model is None:
         model = transit
 
@@ -136,12 +144,32 @@ def transit_exocomet(time, t0, duration, P=None, n=3):
 
 
 def separate_models(time, flux, X=None, gp=None, model=None):
-    if X is None:
-        X = DEFAULT_X(time)
-    if gp is None:
-        gp = DEFAULT_GP(time)
-    if model is None:
-        model = transit
+    """Returns a function to compute the mean, signal, and noise model of a light curve
+    given the epoch, duration, and period of the signal model.
+
+    Parameters
+    ----------
+    time : np.ndarray
+        array of time values
+    flux : np.ndarray
+        flux time series
+    X : np.ndarray, optional
+        linear model design matrix, by default a constant model
+    gp : tinygp.GaussianProcess, optional
+        gaussian process object, by default a very long scale exponential kernel
+    model : callable, optional
+        model function with signature model(time, epoch, duration, period=None), by
+        default a transit model
+
+    Returns
+    -------
+    callable
+        function that computes the mean, signal, and noise model of a light curve given
+        the epoch, duration, and period of the signal model. Signature is:
+        :code:`function(epoch, duration, period=None) -> (mean, signal, noise)`
+    """
+
+    X, gp, model = check_default(time, X, gp, model)
 
     solver = solve_model(flux, X, gp)
 
@@ -163,12 +191,32 @@ def separate_models(time, flux, X=None, gp=None, model=None):
 
 
 def snr(time, flux, X=None, gp=None, model=None):
-    if X is None:
-        X = DEFAULT_X(time)
-    if gp is None:
-        gp = DEFAULT_GP(time)
-    if model is None:
-        model = transit
+    """Returns a function to compute the signal-to-noise ratio of a signal model given
+    its epoch, duration, and period.
+
+    Parameters
+    ----------
+    time : np.ndarray
+        array of time values
+    flux : np.ndarray
+        flux time series
+    X : np.ndarray, optional
+        linear model design matrix, by default a constant model
+    gp : tinygp.GaussianProcess, optional
+        gaussian process object, by default a very long scale exponential kernel
+    model : callable, optional
+        model function with signature model(time, epoch, duration, period=None), by
+        default a transit model
+
+    Returns
+    -------
+    callable
+        function that computes the signal-to-noise ratio of a signal model given its
+        epoch, duration, and period. Signature is:
+        :code:`function(epoch, duration, period=None) -> float`
+    """
+
+    X, gp, model = check_default(time, X, gp, model)
 
     solver = solve(time, flux, gp=gp, X=X, model=model)
 

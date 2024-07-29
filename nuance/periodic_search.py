@@ -1,12 +1,55 @@
 import multiprocess as mp
 import numpy as np
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 from nuance import core
 from nuance.utils import interp_split_times
 
 
-def fold_ll(epochs, lls, z, vz):
+def periodic_search(epochs, durations, ls, snr_f, progress=True):
+    """Returns a function that performs the periodic search given an array of periods.
+
+    Parameters
+    ----------
+    epochs : np.ndarray
+        Values of epochs for with the likelihoods have been computed.
+    durations : np.ndarray
+        Values of durations for with the likelihoods have been computed.
+    ls : list, tuple, np.ndarray
+        Tuple of (likelihoods, depth, depths variance).
+    snr_f : callable
+        Function that computes the SNR given the epoch, duration and period.
+    progress : bool, optional
+        wether to show progress bar, by default True
+
+    Returns
+    -------
+    callable
+        Function that computes the SNR and parameters for each period.
+    """
+    global fold_f
+    fold_f = _fold_ll(epochs, *ls)
+
+    def _progress(x, **kwargs):
+        return tqdm(x, **kwargs) if progress else x
+
+    def function(periods):
+        snr = np.zeros(len(periods))
+        params = np.zeros((len(periods), 3))
+
+        with mp.Pool() as pool:
+            for p, (epoch, duration_i, period) in enumerate(
+                _progress(pool.imap(_solve, periods), total=len(periods))
+            ):
+                Dj = durations[duration_i]
+                snr[p], params[p] = float(snr_f(epoch, Dj, period)), (epoch, Dj, period)
+
+        return snr, params
+
+    return function
+
+
+def _fold_ll(epochs, lls, z, vz):
     f_ll = core.nearest_neighbors(epochs, lls)
     f_z = core.nearest_neighbors(epochs, z)
     f_dz2 = core.nearest_neighbors(epochs, vz)
@@ -35,30 +78,7 @@ def fold_ll(epochs, lls, z, vz):
     return fun
 
 
-def periodic_search(epochs, durations, ls, snr_f, progress=True):
-    global fold_f
-    fold_f = fold_ll(epochs, *ls)
-
-    def _progress(x, **kwargs):
-        return tqdm(x, **kwargs) if progress else x
-
-    def function(periods):
-        snr = np.zeros(len(periods))
-        params = np.zeros((len(periods), 3))
-
-        with mp.Pool() as pool:
-            for p, (epoch, duration_i, period) in enumerate(
-                _progress(pool.imap(solve, periods), total=len(periods))
-            ):
-                Dj = durations[duration_i]
-                snr[p], params[p] = float(snr_f(epoch, Dj, period)), (epoch, Dj, period)
-
-        return snr, params
-
-    return function
-
-
-def solve(period):
+def _solve(period):
     phase, lls = fold_f(period)
     epoch_i, duration_i = np.unravel_index(np.argmax(lls), lls.shape)
     epoch = phase[epoch_i] * period
