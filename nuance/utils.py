@@ -37,18 +37,6 @@ def phase(t, t0, p):
     return (t - t0 + 0.5 * p) % p - 0.5 * p
 
 
-def tv_dv(duration, depth, omega, sigma):
-    return np.pi / (omega * duration), 2 * sigma / depth
-
-
-def binn(x, y, n):
-    N = int(len(x) / n)
-    ns = np.histogram(x, N)[0]
-    bx = np.histogram(x, N, weights=x)[0] / ns
-    by = np.histogram(x, N, weights=y)[0] / ns
-    return bx, by
-
-
 def log_gauss_product_integral(a, va, b, vb):
     """Log of the product ot two Normal distributions (normalized)
 
@@ -76,15 +64,6 @@ def log_gauss_product_integral(a, va, b, vb):
     )
 
 
-def Ps(lls, zs, vzs):
-    vZ = 1 / np.sum(1 / vzs, 0)
-    Z = vZ * np.sum(zs / vzs, 0)
-
-    P1 = np.sum(lls, 0)
-    P2 = P1 + np.sum(log_gauss_product_integral(zs, vzs, Z, vZ), 0)
-    return P1, P2
-
-
 def simulated(
     t0=0.2, D=0.05, depth=0.02, P=0.7, time=None, kernel=None, error=0.001, w=None
 ):
@@ -104,43 +83,6 @@ def simulated(
     flux = gp.sample(jax.random.PRNGKey(40)) + true_transit + w @ X
 
     return (time, flux, error), X, gp
-
-
-def plot_search(nu, search, bins=7 / 60 / 24):
-    """Plot result of a the periodic search
-
-    Parameters
-    ----------
-    nu : _type_
-        _description_
-    search : _type_
-        _description_
-    """
-    import matplotlib.pyplot as plt
-
-    t0, D, P = search.best
-
-    plt.subplot(2, 2, (1, 3))
-    plt.plot(search.periods, search.Q_snr)
-    plt.title(f"{P:.5f} days")
-
-    mean, astro, noise = nu.models(t0, D, P)
-
-    plt.subplot(2, 2, 2)
-    plt.plot(nu.flux - mean, ".", c="0.8")
-    plt.plot(astro, c="k", label="found")
-    ylim = plt.ylim()
-    _ = plt.legend()
-
-    plt.subplot(2, 2, 4)
-    mean, astro, noise = nu.models(t0, D, P)
-    phi = phase(nu.time, t0, P)
-    detrended = nu.flux - noise - mean
-    plt.plot(phi, detrended, ".", c=".8")
-    bx, by, be = binn_time(phi, detrended, bins=bins)
-    plt.errorbar(bx, by, yerr=be, fmt=".", c="k")
-    plt.xlim(*(np.array([-1, 1]) * 10 * D))
-    plt.ylim(*(np.array([-1, 1]) * float(np.abs(astro.min())) * 4))
 
 
 def clean_periods(periods, period, tol=0.02):
@@ -174,74 +116,6 @@ def binn_time(time, flux, bins=7 / 24 / 60):
     binned_flux = np.array([np.mean(flux[i]) for i in indexes])
     binned_error = np.array([np.std(flux[i]) / np.sqrt(len(i)) for i in indexes])
     return binned_time, binned_flux, binned_error
-
-
-def simulated_ground_based(n=500, N=4):
-    true = {
-        "t0": 0.3,
-        "D": 38 / 60 / 24,
-        "depth": 0.005,
-        "P": 0.65,
-    }
-    idxs = np.arange(1, N) * n
-    times = [np.linspace(0 + i, 0.5 + i, n) for i in range(N)]
-    time = np.concatenate(times)
-    error = 1e-3
-    kernel = tinygp.kernels.quasisep.SHO(np.pi / true["D"] / 3, 1, true["depth"] / 2)
-    variability_gp = tinygp.GaussianProcess(kernel, time, diag=0)
-    jax_key = jax.random.PRNGKey(0)
-    variability = variability_gp.sample(jax_key)
-    variabilities = [
-        np.random.normal(0, error) + v for v in np.split(variability, idxs)
-    ]
-
-    airmasses = [0.2 * (t - t.min()) ** 2 for t in times]
-    bkgs = [
-        tinygp.GaussianProcess(
-            tinygp.kernels.quasisep.SHO(20, 1, 0.005), t, diag=(1e-4) ** 2
-        ).sample(jax.random.PRNGKey(i))
-        for i, t in enumerate(times)
-    ]
-    fwhms = [
-        tinygp.GaussianProcess(
-            tinygp.kernels.quasisep.SHO(45, 1, 0.005), t, diag=(5e-4) ** 2
-        ).sample(jax.random.PRNGKey(i))
-        for i, t in enumerate(times)
-    ]
-
-    transits = np.split(
-        true["depth"] * core.transit(time, 0.3, true["D"], true["P"]), idxs
-    )
-
-    systematics = [
-        0.2 * np.random.normal(0, 0.9, 3) @ np.vstack([airmasses[i], bkgs[i], fwhms[i]])
-        for i in range(N)
-    ]
-
-    fluxes = [systematics[i] + variabilities[i] + transits[i] + 1.0 for i in range(N)]
-
-    fluxes = [f - np.median(f) + 1.0 for f in fluxes]
-
-    observations = [
-        {
-            "time": times[i],
-            "flux": fluxes[i],
-            "error": np.ones_like(times[i]) * error,
-            "airmass": airmasses[i],
-            "bkg": bkgs[i],
-            "fwhm": fwhms[i],
-        }
-        for i in range(N)
-    ]
-
-    signals = {
-        "transits": transits,
-        "variabilities": variabilities,
-        "systematics": systematics,
-        "transit_params": true,
-    }
-
-    return observations, signals
 
 
 def minimize(fun, init_params, param_names=None):
