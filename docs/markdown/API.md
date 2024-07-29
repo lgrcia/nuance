@@ -2,14 +2,18 @@
 
 ```{eval-rst}
 
+.. currentmodule:: nuance
+
 .. autosummary::
    :toctree: generated
    :nosignatures:
    :template: class.rst
 
-   ~nuance.Star
-   ~nuance.nuance.Nuance
-   ~nuance.search_data.SearchData
-   ~nuance.combined.CombinedNuance
+   Star
+   linear_search
+   periodic_search
+   core.snr
+   core.separate_models
+
 
 ```
