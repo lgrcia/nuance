@@ -17,8 +17,15 @@
 
 .. currentmodule:: nuance
 
-.. autofunction:: linear_search
-.. autofunction:: periodic_search
+.. automodule:: nuance.linear_search
+   :members:
+   :show-inheritance:
+
+
+.. automodule:: nuance.periodic_search
+   :members:
+   :show-inheritance:
+
 
 .. automodule:: nuance.core
    :members:
