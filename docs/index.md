@@ -80,7 +80,6 @@ notebooks/tutorials/exocomet.ipynb
 :maxdepth: 1
 :caption: Reference
 
-markdown/how.ipynb
 notebooks/star.ipynb
 notebooks/templates.ipynb
 markdown/hardware.md

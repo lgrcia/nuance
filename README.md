@@ -19,23 +19,21 @@ Documentation at [nuance.readthedocs.io](https://nuance.readthedocs.io)
 ## Example
 
 ```python
-from nuance import Nuance, utils
 import numpy as np
-
-(time, flux, error), X, gp = utils.simulated()
-
-nu = Nuance(time, flux, gp=gp, X=X)
+from nuance import linear_search, periodic_search, core
 
 # linear search
 epochs = time.copy()
 durations = np.linspace(0.01, 0.2, 15)
-nu.linear_search(epochs, durations)
+ls = linear_search(time, flux, gp=gp)(epochs, durations)
 
 # periodic search
 periods = np.linspace(0.3, 5, 2000)
-search = nu.periodic_search(periods)
+snr_function = jax.jit(core.snr(time, flux, gp=gp))
+ps_function = periodic_search(epochs, durations, ls, snr_function)
+snr, params = ps_function(periods)
 
-t0, D, P = search.best
+t0, D, P = params[np.argmax(snr)]
 ```
 
 ## Installation
