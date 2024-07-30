@@ -2,16 +2,18 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 from tqdm.auto import tqdm
+from typing import Callable
+import tinygp
 
 from nuance import DEVICES_COUNT, core
 
 
 def linear_search(
-    time,
-    flux,
-    gp=None,
-    X=None,
-    model=None,
+    time: np.ndarray,
+    flux: np.ndarray,
+    gp: tinygp.GaussianProcess | None = None,
+    X: np.ndarray | None = None,
+    model: Callable | None = None,
     positive: bool = True,
     progress: bool = True,
     backend: str | None = None,
@@ -58,7 +60,7 @@ def linear_search(
             jax.vmap(jax.vmap(solver, in_axes=(None, 0)), in_axes=(0, None))
         )
 
-    def function(epochs, durations):
+    def function(epochs: np.ndarray, durations: np.ndarray):
         """Compute the log likelihood of a transit model at different epochs and durations
 
         Parameters
