@@ -1,5 +1,20 @@
 # API
 
+The following pages describe the main objects and function of `nuance`
+
+## Main modules
+
+```{toctree}
+:maxdepth: 1
+
+core
+ls
+ps
+
+```
+
+## Other
+
 ```{eval-rst}
 
 .. currentmodule:: nuance
@@ -10,25 +25,5 @@
    :template: class.rst
 
    Star
-
-```
-
-```{eval-rst}
-
-.. currentmodule:: nuance
-
-.. automodule:: nuance.linear_search
-   :members:
-   :show-inheritance:
-
-
-.. automodule:: nuance.periodic_search
-   :members:
-   :show-inheritance:
-
-
-.. automodule:: nuance.core
-   :members:
-   :show-inheritance:
 
 ```

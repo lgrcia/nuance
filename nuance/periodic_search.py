@@ -1,3 +1,9 @@
+"""
+The periodic search module provides functions to compute the probability of 
+a periodic signal to be present in the data, using quantities computed from single 
+events statistics.
+"""
+
 import multiprocess as mp
 import numpy as np
 from tqdm.auto import tqdm

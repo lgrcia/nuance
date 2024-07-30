@@ -1,9 +1,14 @@
+"""
+The linear search module provides functions to compute single events statistics.
+"""
+
+from typing import Callable
+
 import jax
 import jax.numpy as jnp
 import numpy as np
-from tqdm.auto import tqdm
-from typing import Callable
 import tinygp
+from tqdm.auto import tqdm
 
 from nuance import DEVICES_COUNT, core
 
@@ -111,7 +116,7 @@ def linear_search(
 def combine_linear_searches(*linear_searches):
     """Combine the results of multiple linear searches
 
-    *linear_searches : list
+    linear_searches : list
         lists of (log likelihoods, model depths, depths variances)
 
     Returns
