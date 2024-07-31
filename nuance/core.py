@@ -46,16 +46,21 @@ def solve_model(flux, X, gp):
         assert (
             len(gp) == len(flux) == len(X)
         ), "gp, flux, and datasets must have the same length"
-        Liy = solve_triangular(*[(_gp, _flux) for _gp, _flux in zip(gp, flux)])
+        base_Liy = solve_triangular(*[(_gp, _flux) for _gp, _flux in zip(gp, flux)])
         LiX = solve_triangular(*[(_gp, _X.T) for _gp, _X in zip(gp, X)])
 
         @jax.jit
-        def function(ms):
+        def function(ms, depth=None):
+            if depth is not None:
+                raise NotImplementedError(
+                    "depth is not implemented for multiple datasets, open an issue"
+                )
+            _Liy = base_Liy
             Lim = solve_triangular(*[(_gp, m) for _gp, m in zip(gp, ms)])
             LiXm = jnp.hstack([LiX, Lim[:, None]])
             LiXmT = LiXm.T
             LimX2 = LiXmT @ LiXm
-            w = jnp.linalg.lstsq(LimX2, LiXmT @ Liy)[0]
+            w = jnp.linalg.lstsq(LimX2, LiXmT @ _Liy)[0]
             v = jnp.linalg.inv(LimX2)
             return 0.0, w, v
 
@@ -63,11 +68,15 @@ def solve_model(flux, X, gp):
 
     # single gp and dataset
     else:
-        Liy = gp.solver.solve_triangular(flux)
+        base_Liy = gp.solver.solve_triangular(flux)
         LiX = gp.solver.solve_triangular(X.T)
 
         @jax.jit
-        def function(m):
+        def function(m, depth=None):
+            if depth is not None:
+                Liy = base_Liy + gp.solver.solve_triangular(depth * m)
+            else:
+                Liy = base_Liy
             Xm = jnp.vstack([X, m])
             Lim = gp.solver.solve_triangular(m)
             LiXm = jnp.hstack([LiX, Lim[:, None]])
@@ -125,9 +134,9 @@ def solve(time, flux, gp=None, X=None, model=None):
     else:
         _model = model
 
-    def function(epoch, duration, period=None):
+    def function(epoch, duration, period=None, depth=None):
         m = _model(time, epoch, duration, period=period)
-        ll, w, v = solve_m(m)
+        ll, w, v = solve_m(m, depth=depth)
         return jnp.array([w[-1], v[-1, -1], ll])
 
     return function

@@ -71,6 +71,7 @@ citation.md
 :caption: Tutorials
 
 notebooks/tutorials/GP_optimization.ipynb
+notebooks/tutorials/analytical-ir.ipynb
 notebooks/tutorials/ground_based.ipynb
 notebooks/tutorials/tess_search.ipynb
 notebooks/tutorials/exocomet.ipynb
