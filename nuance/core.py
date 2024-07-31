@@ -115,7 +115,7 @@ def solve(time, flux, gp=None, X=None, model=None):
     callable
         function that computes the log likelihood of data assuming it is drawn from a
         Gaussian Process with a mean linear model. Signature is:
-        :code:`function(epoch, duration, period=None) -> (log_likelihood, weights, variance)`
+        ``function(epoch, duration, period=None) -> (depth, depth_variance, log_likelihood)``
     """
 
     X, gp, model = check_default(time, X, gp, model)
