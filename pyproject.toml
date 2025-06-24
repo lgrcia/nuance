@@ -1,6 +1,6 @@
 [project]
 name = "nuance"
-version = "0.8.1"
+version = "0.8.2"
 description = "Transit signals detection among correlated noises"
 authors = [{ name = "Lionel Garcia" }]
 license = "MIT"

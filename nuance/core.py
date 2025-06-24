@@ -23,9 +23,15 @@ DEFAULT_GP = lambda time: GaussianProcess(kernels.quasisep.Exp(1e12), time)
 
 def check_default(time, X=None, gp=None, model=None):
     if X is None:
-        X = DEFAULT_X(time)
+        if isinstance(time, (list, tuple)):
+            X = [DEFAULT_X(t) for t in time]
+        else:
+            X = DEFAULT_X(time)
     if gp is None:
-        gp = DEFAULT_GP(time)
+        if isinstance(time, (list, tuple)):
+            X = [DEFAULT_X(t) for t in time]
+        else:
+            gp = DEFAULT_GP(time)
     if model is None:
         model = transit
     return X, gp, model
@@ -98,14 +104,17 @@ def solve(time, flux, gp=None, X=None, model=None):
 
     Parameters
     ----------
-    time : np.ndarray
-        array of times
-    flux : np.ndarray
-        array of fluxes
-    X : np.ndarray, optional
-        linear model design matrix, by default a constant model
-    gp : tinygp.GaussianProcess, optional
-        Gaussian process object, by default a very long scale exponential kernel
+    time : np.ndarray, list
+        array of times. If multiple datasets are provided, this should be a list of arrays.
+    flux : np.ndarray, list
+        array of fluxes. If this is a list, its length must match that of `time` and contains
+        the flux of each dataset.
+    X : np.ndarray, list, optional
+        linear model design matrix, by default a constant model. If this is a list,
+        its length must match that of `time` and contains the design matrix of each dataset.
+    gp : tinygp.GaussianProcess, list, optional
+        Gaussian process object, by default a very long scale exponential kernel. If this is a list,
+        its length must match that of `time` and contains the GP of each dataset.
     model : callable, optional
         model function with signature :code:`model(time, epoch, duration, period=None) -> Array`,
         by default an empirical :py:func:`~nuance.core.transit` model
@@ -304,14 +313,17 @@ def snr(time, flux, X=None, gp=None, model=None):
 
     Parameters
     ----------
-    time : np.ndarray
-        array of times
-    flux : np.ndarray
-        array of fluxes
+    time : np.ndarray, list
+        array of times. If multiple datasets are provided, this should be a list of arrays.
+    flux : np.ndarray, list
+        array of fluxes. If this is a list, its length must match that of `time` and contain
+        the flux of each dataset.
     X : np.ndarray, optional
-        linear model design matrix, by default a constant model
+        linear model design matrix, by default a constant model. If this is a list,
+        its length must match that of `time` and contain the design matrix of each dataset.
     gp : tinygp.GaussianProcess, optional
-        Gaussian process object, by default a very long scale exponential kernel
+        Gaussian process object, by default a very long scale exponential kernel. If this is a list,
+        its length must match that of `time` and contain the GP of each dataset.
     model : callable, optional
         model function with signature :code:`model(time, epoch, duration, period=None) -> Array`,
         by default an empirical :py:func:`~nuance.core.transit` model
