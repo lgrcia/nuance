@@ -39,14 +39,14 @@ def periodic_search(epochs, durations, ls, snr_f, progress=True):
     def _progress(x, **kwargs):
         return tqdm(x, **kwargs) if progress else x
 
-    def function(periods):
+    def function(periods, processes=None, chunksize=500):
         snr = np.zeros(len(periods))
         params = np.zeros((len(periods), 3))
 
         ctx = mp.get_context('spawn')  # Can't use fork with jax.
-        with ctx.Pool() as pool:
+        with ctx.Pool(processes=processes) as pool:
             for p, (epoch, duration_i, period) in enumerate(
-                _progress(pool.starmap(_solve, [(period, fold_f) for period in periods]), total=len(periods))
+                _progress(pool.starmap(_solve, [(period, fold_f) for period in periods], chunksize=chunksize), total=len(periods))
             ):
                 Dj = durations[duration_i]
                 snr[p], params[p] = float(snr_f(epoch, Dj, period)), (epoch, Dj, period)
