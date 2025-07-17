@@ -33,7 +33,7 @@ def periodic_search(epochs, durations, ls, snr_f, progress=True):
     callable
         Function that computes the SNR and parameters for each period.
     """
-    global fold_f
+
     fold_f = _fold_ll(epochs, *ls)
 
     def _progress(x, **kwargs):
@@ -43,9 +43,10 @@ def periodic_search(epochs, durations, ls, snr_f, progress=True):
         snr = np.zeros(len(periods))
         params = np.zeros((len(periods), 3))
 
-        with mp.Pool() as pool:
+        ctx = mp.get_context('spawn')  # Can't use fork with jax.
+        with ctx.Pool() as pool:
             for p, (epoch, duration_i, period) in enumerate(
-                _progress(pool.imap(_solve, periods), total=len(periods))
+                _progress(pool.starmap(_solve, [(period, fold_f) for period in periods]), total=len(periods))
             ):
                 Dj = durations[duration_i]
                 snr[p], params[p] = float(snr_f(epoch, Dj, period)), (epoch, Dj, period)
@@ -84,7 +85,7 @@ def _fold_ll(epochs, lls, z, vz):
     return fun
 
 
-def _solve(period):
+def _solve(period, fold_f):
     phase, lls = fold_f(period)
     epoch_i, duration_i = np.unravel_index(np.argmax(lls), lls.shape)
     epoch = phase[epoch_i] * period
