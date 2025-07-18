@@ -90,3 +90,11 @@ def _solve(period, fold_f):
     epoch_i, duration_i = np.unravel_index(np.argmax(lls), lls.shape)
     epoch = phase[epoch_i] * period
     return epoch, duration_i, period
+
+
+def main():
+    return
+
+
+if __name__ == '__main__':
+    main()
