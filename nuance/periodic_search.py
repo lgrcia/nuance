@@ -1,8 +1,10 @@
 """
-The periodic search module provides functions to compute the probability of 
-a periodic signal to be present in the data, using quantities computed from single 
+The periodic search module provides functions to compute the probability of
+a periodic signal to be present in the data, using quantities computed from single
 events statistics.
 """
+
+import os
 
 import multiprocess as mp
 import numpy as np
@@ -12,7 +14,8 @@ from nuance import core
 from nuance.utils import interp_split_times
 
 
-def periodic_search(epochs, durations, ls, snr_f, progress=True):
+def periodic_search(epochs, durations, ls, snr_f, progress=True,
+                    processes=os.cpu_count()):
     """Returns a function that performs the periodic search given an array of periods.
 
     Parameters
@@ -27,6 +30,8 @@ def periodic_search(epochs, durations, ls, snr_f, progress=True):
         Function that computes the SNR given the epoch, duration and period.
     progress : bool, optional
         wether to show progress bar, by default True
+    processes : int, optional
+        Number of processes to use, by default mp.cpu_count()
 
     Returns
     -------
@@ -43,7 +48,7 @@ def periodic_search(epochs, durations, ls, snr_f, progress=True):
         snr = np.zeros(len(periods))
         params = np.zeros((len(periods), 3))
 
-        with mp.Pool() as pool:
+        with mp.Pool(processes) as pool:
             for p, (epoch, duration_i, period) in enumerate(
                 _progress(pool.imap(_solve, periods), total=len(periods))
             ):
