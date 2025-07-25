@@ -5,6 +5,7 @@ events statistics.
 """
 
 import multiprocess as mp
+from functools import partial
 import jax
 import numpy as np
 from tqdm.auto import tqdm
@@ -40,17 +41,21 @@ def periodic_search(epochs, durations, ls, snr_f, progress=True):
     def _progress(x, **kwargs):
         return tqdm(x, **kwargs) if progress else x
 
-    def function(periods, processes=DEVICES_COUNT, chunksize=500, batch_size=DEVICES_COUNT):
+    def function(periods, processes=DEVICES_COUNT, batch_size=DEVICES_COUNT):
         snr = np.zeros(len(periods))
         params = np.zeros((len(periods), 3))
 
+        # Use multiprocessing to get the optimal epoch and duration at each period.
+        solve_f = partial(_solve, fold_f)
         ctx = mp.get_context('spawn')  # Can't use fork with jax.
         with ctx.Pool(processes=processes) as pool:
-            for p, (epoch, duration_i, period) in enumerate(
-                _progress(pool.starmap(_solve, [(period, fold_f) for period in periods], chunksize=chunksize), total=len(periods))
-            ):
-                Dj = durations[duration_i]
-                params[p] = (epoch, Dj, period)
+            period_chunks = [periods[i::processes] for i in range(processes)]
+
+            for i, result in enumerate(_progress(pool.imap(solve_f, period_chunks), total=processes)):
+                epochs_chunk, duration_idx_chunk, periods_chunk = result
+                params[i::processes, 0] = epochs_chunk
+                params[i::processes, 1] = durations[duration_idx_chunk]
+                params[i::processes, 2] = periods_chunk
 
         # Use jax.vmap to get the SNR at each period.
         snr_vmap = jax.vmap(snr_f, in_axes=(0, 0, 0))
@@ -92,11 +97,20 @@ def _fold_ll(epochs, lls, z, vz):
     return fun
 
 
-def _solve(period, fold_f):
-    phase, lls = fold_f(period)
-    epoch_i, duration_i = np.unravel_index(np.argmax(lls), lls.shape)
-    epoch = phase[epoch_i] * period
-    return epoch, duration_i, period
+def _solve(fold_f, periods):
+
+    epochs = np.zeros_like(periods)
+    duration_idx = np.zeros_like(periods, dtype='int')
+
+    for i, period in enumerate(periods):
+        phase, lls = fold_f(period)
+        epoch_i, duration_i = np.unravel_index(np.argmax(lls), lls.shape)
+        epoch = phase[epoch_i] * period
+
+        epochs[i] = epoch
+        duration_idx[i] = duration_i
+
+    return epochs, duration_idx, periods
 
 
 def main():
