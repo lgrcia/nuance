@@ -5,10 +5,11 @@ events statistics.
 """
 
 import multiprocess as mp
+import jax
 import numpy as np
 from tqdm.auto import tqdm
 
-from nuance import core
+from nuance import DEVICES_COUNT, core
 from nuance.utils import interp_split_times
 
 
@@ -39,7 +40,7 @@ def periodic_search(epochs, durations, ls, snr_f, progress=True):
     def _progress(x, **kwargs):
         return tqdm(x, **kwargs) if progress else x
 
-    def function(periods, processes=None, chunksize=500):
+    def function(periods, processes=DEVICES_COUNT, chunksize=500, batch_size=DEVICES_COUNT):
         snr = np.zeros(len(periods))
         params = np.zeros((len(periods), 3))
 
@@ -49,7 +50,14 @@ def periodic_search(epochs, durations, ls, snr_f, progress=True):
                 _progress(pool.starmap(_solve, [(period, fold_f) for period in periods], chunksize=chunksize), total=len(periods))
             ):
                 Dj = durations[duration_i]
-                snr[p], params[p] = float(snr_f(epoch, Dj, period)), (epoch, Dj, period)
+                params[p] = (epoch, Dj, period)
+
+        # Use jax.vmap to get the SNR at each period.
+        snr_vmap = jax.vmap(snr_f, in_axes=(0, 0, 0))
+        for i in _progress(range(0, len(periods), batch_size), unit_scale=batch_size):
+            imin = i
+            imax = i + batch_size
+            snr[imin:imax] = snr_vmap(params[imin:imax, 0], params[imin:imax, 1], params[imin:imax, 2])
 
         return snr, params
 
