@@ -62,11 +62,10 @@ def _fold_ll(epochs, lls, z, vz):
     f_dz2 = core.nearest_neighbors(epochs, vz)
 
     def _fold(times):
-        lls = np.array([f_ll(time) for time in times])
-        zs = np.array([f_z(time) for time in times])
-        vzs = np.array([f_dz2(time) for time in times])
+        lls = f_ll(times)
+        zs = f_z(times)
+        vzs = f_dz2(times)
 
-        P1 = np.sum(lls, 0)
         vZ = 1 / np.sum(1 / vzs, 0)
         Z = vZ * np.sum(zs / vzs, 0)
         P1 = np.sum(lls, 0)
