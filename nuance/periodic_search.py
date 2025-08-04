@@ -58,7 +58,7 @@ def periodic_search(epochs, durations, ls, snr_f, progress=True):
                 params[i::processes, 2] = periods_chunk
 
         # Use jax.vmap to get the SNR at each period.
-        snr_vmap = jax.vmap(snr_f, in_axes=(0, 0, 0))
+        snr_vmap = jax.pmap(snr_f, in_axes=(0, 0, 0))
         for i in _progress(range(0, len(periods), batch_size), unit_scale=batch_size):
             imin = i
             imax = i + batch_size
