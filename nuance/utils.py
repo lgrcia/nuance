@@ -1,6 +1,7 @@
 import jax
 import jaxopt
 import numpy as np
+import jax.numpy as jnp
 import tinygp
 from scipy.ndimage import minimum_filter1d
 
@@ -146,6 +147,55 @@ def minimize(fun, init_params, param_names=None):
 
     solver = jaxopt.ScipyMinimize(fun=inner)
     soln = solver.run(start)
+
+    return dict(init_params, **soln.params)
+
+
+def bounded_minimize(fun, init_params, param_names=None, bounds_min=None, bounds_max=None):
+    """Minimize a function using jaxopt.ScipyBoundedMinimize
+
+    Parameters
+    ----------
+    fun : callable
+        the function to minimize of the form fun(params: dict) -> float
+    init_params : dict
+        initial parameters
+    param_names : list, optional
+        list of parameters to optimize, all others being fixed,
+        by default None
+    bounds_min : dict, optional
+        dictionary of lower bounds to use for parameters, missing values
+        will be set to -inf.
+    bounds_max: dict, optional
+        dictionary of lower bounds to use for parameters, missing values
+        will be set to inf.
+
+    Returns
+    -------
+    dict
+        optimized parameters
+    """
+
+    if bounds_min is None:
+        bounds_min = dict()
+
+    if bounds_max is None:
+        bounds_max = dict()
+
+    def inner(theta, *args, **kwargs):
+        params = dict(init_params, **theta)
+        return fun(params, *args, **kwargs)
+
+    param_names = list(init_params.keys()) if param_names is None else param_names
+    start = {k: init_params[k] for k in param_names}
+
+    bounds_min = {k: bounds_min.get(k, -jnp.inf) for k in param_names}
+    bounds_max = {k: bounds_max.get(k, jnp.inf) for k in param_names}
+
+    bounds = (bounds_min, bounds_max)
+
+    solver = jaxopt.ScipyBoundedMinimize(fun=inner)
+    soln = solver.run(start, bounds)
 
     return dict(init_params, **soln.params)
 
