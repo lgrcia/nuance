@@ -192,7 +192,7 @@ def bounded_minimize(fun, init_params, param_names=None, bounds_min=None, bounds
     bounds_min = {k: bounds_min.get(k, -jnp.inf) for k in param_names}
     bounds_max = {k: bounds_max.get(k, jnp.inf) for k in param_names}
 
-    bounds = (list(bounds_min.values()), list(bounds_max.values()))
+    bounds = (bounds_min, bounds_max)
 
     solver = jaxopt.ScipyBoundedMinimize(fun=inner)
     soln = solver.run(start, bounds)
